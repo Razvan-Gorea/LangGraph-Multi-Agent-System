@@ -1,0 +1,33 @@
+digraph DFD {
+    rankdir=TB;
+
+    // Entities
+    User [shape=actor, label="User"];
+    
+    // Processes
+    QueryInput [shape=box, label="User Query Input"];
+    DocumentRetrieval [shape=box, label="Retrieval Agent"];
+    ResponseAgent [shape=box, label="Response Agent"];
+    ContextGuard [shape=box, label="Context Guard"];
+    ExternalLLM [shape=box, label="External LLM"];
+    
+    // Data Stores
+    KnowledgeBase [shape=cylinder, label="Knowledge Base"];
+    PastQueries [shape=cylinder, label="Past Queries"];
+    RetrievalResults [shape=cylinder, label="Retrieval Results"];
+    GeneratedResponses [shape=cylinder, label="Generated Responses"];
+    
+    // Data Flows
+    User -> QueryInput [label="Submit Query"];
+    QueryInput -> DocumentRetrieval [label="Pass Query"];
+    DocumentRetrieval -> KnowledgeBase [label="Retrieve Documents"];
+    DocumentRetrieval -> RetrievalResults [label="Store Retrieved Documents"];
+    RetrievalResults -> ResponseAgent [label="Provide Retrieved Documents"];
+    ResponseAgent -> ContextGuard [label="Check for Bad Context"];
+    ContextGuard -> ExternalLLM [label="Generate Response"];
+    ExternalLLM -> ContextGuard [label="Check for Bad Response"];
+    ContextGuard -> ResponseAgent [label="Return Good Responses"];
+    ResponseAgent -> User [label="Return Generated Response"];
+    ResponseAgent -> GeneratedResponses [label="Store Response"];
+    ResponseAgent -> PastQueries [label="Store Past Queries"];
+}

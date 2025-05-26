@@ -1,0 +1,108 @@
+version: '3'
+
+services:
+  zookeeper:
+    image: quay.io/debezium/zookeeper:3.0
+    container_name: zookeeper
+    ports:
+      - "0.0.0.0:2181:2181"
+      - "0.0.0.0:2888:2888"
+      - "0.0.0.0:3888:3888"
+    networks:
+      - app-network
+
+  kafka:
+    image: quay.io/debezium/kafka:3.0
+    container_name: kafka
+    ports:
+      - "0.0.0.0:9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      - ZOOKEEPER_CONNECT=zookeeper:2181
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres_container
+    ports:
+      - "0.0.0.0:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - PGHOST=0.0.0.0
+      - PGPORT=5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d mydatabase"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  kafka-connect:
+    image: quay.io/debezium/connect:3.0
+    container_name: connect
+    ports:
+      - "0.0.0.0:8083:8083"
+    depends_on:
+      - kafka
+      - postgres
+    environment:
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_statuses
+      - BOOTSTRAP_SERVERS=kafka:9092
+      - CONNECT_BOOTSTRAP_SERVERS=kafka:9092
+      - CONNECT_REST_PORT=8083
+      - CONNECT_GROUP_ID=1
+      - CONNECT_CONFIG_STORAGE_TOPIC=my_connect_configs
+      - CONNECT_OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - CONNECT_STATUS_STORAGE_TOPIC=my_connect_statuses
+      - CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_REST_ADVERTISED_HOST_NAME=connect
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -f http://localhost:8083/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  fast-api:
+    image: fast-api-example:latest
+    container_name: fast-api-example
+    ports:
+      - "0.0.0.0:8000:8000"
+    networks:
+      - app-network
+
+  docgenie-app:
+    image: docgenie-app:latest
+    container_name: docgenie-app
+    ports:
+      - "0.0.0.0:8888:8888"
+      - "0.0.0.0:3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-connect:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:3000/ && curl -f http://0.0.0.0:8888/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

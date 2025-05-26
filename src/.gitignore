@@ -1,0 +1,48 @@
+# Vim
+*.swp
+# Python
+venv
+.venv/
+.env
+*.pyc
+__pycache__
+.pytest_cache
+*.db
+.vscode/
+.vscode/*
+.vscode
+# Next.js
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Next.js build output
+/.next
+/out
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Testing
+/coverage
+
+# Production environment variables
+.env.local
+.env.*.local
+
+# Miscellaneous
+.DS_Store
+*.pem
+*.log
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Mac system files
+Thumbs.db

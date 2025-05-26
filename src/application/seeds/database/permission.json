@@ -1,0 +1,18 @@
+[
+    {
+      "id": 1,
+      "permission_name": "SimplyTransport",
+      "user_id": 1
+    },
+    {
+      "id": 2,
+      "permission_name": "postgres_database",
+      "user_id": 2
+    },
+    {
+      "id": 3,
+      "permission_name": "DayofTheWeek",
+      "user_id": 3 
+    }
+  ]
+  

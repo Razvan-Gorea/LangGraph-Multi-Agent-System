@@ -1,0 +1,323 @@
+.block {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 65px;
+  background-color: #0070f3;
+  border-bottom: 2px solid black;
+  margin: 0;
+  padding-left: 30px;
+  color: white;
+}
+
+.text_bar {
+  position: absolute;
+  bottom: 5%;
+  margin-left: 30%;
+
+  height: auto;
+  min-height: 50px;
+  width: 41.3%;
+
+  border: 1.5px solid grey;
+  border-radius: 35px;
+
+  padding-left: 20px;
+  padding-top: 13px;
+  padding-right: 100px;
+  padding-bottom: 5px;
+
+  box-sizing: border-box;
+  outline: none;
+  font-size: 1.1rem;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  resize: none;
+  overflow: scroll;
+
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.conversation_text_bar {
+  position: absolute;
+  bottom: 4%;
+  margin-left: 10%;
+  font-size: 13px;
+
+  height: auto;
+  min-height: 55px;
+  width: 83%;
+
+  border: 1.5px solid grey;
+  border-radius: 35px;
+
+  padding-left: 20px;
+  padding-top: 16px;
+  padding-right: 95px;
+  padding-bottom: 5px;
+
+  box-sizing: border-box;
+  outline: none;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  resize: none;
+  overflow: scroll;
+
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.query_submit_button {
+  cursor: pointer;
+  position: absolute;
+  bottom: 5.5%;
+  margin-left: 68.7%;
+  font-size: 1.2rem;
+  width: 40px;
+  height: 40px;
+  background-color: #0070f3;
+  border-radius: 50%;
+  border: 1px solid #0070f3;
+  color: white;
+}
+
+.conversation_button {
+  cursor: pointer;
+  position: absolute;
+  bottom: 5.5%;
+  margin-left: 80%;
+  padding-bottom: 3px;
+  font-size: 1.4rem;
+  width: 40px;
+  height: 40px;
+  background-color: #0070f3;
+  border-radius: 50%;
+  border: 1px solid #0070f3;
+  color: white;
+}
+
+.conversation_button:hover {
+  background-color: #005bb5;
+}
+
+.query_submit_button:hover {
+  background-color: #005bb5;
+}
+
+.scrollable_list {
+  /* Try to not edit this class, may have present unintended behaviours if touched */
+  margin-top: 0%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  height: 60vh;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  padding: 10px;
+}
+
+.scrollable_list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%; /* Ensures the list takes full width of the container */
+}
+
+.scrollable_list li {
+  /* Edit this class if you want to edit the individual item container i.e user's input display */
+  margin: 50px 0; /* Adds vertical spacing between items */
+  margin-left: 30%;
+  border-radius: 40px;
+  padding-top: 50px;
+  padding-bottom: 50px;
+  padding-left: 50px;
+  padding-right: 50px;
+  max-width: 37%;
+  font-size: 1.2rem;
+  word-wrap: break-word; /* Long text wraps to onto a newline */
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.scrollable_list li.generated_message {
+  border: 2px solid #1d83f8
+}
+
+.scrollable_list li.user_message {
+  border: 1.5px solid grey;
+}
+
+.scrollable_conversations_list {
+  /* Consolidated and improved vertical scrolling */
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 40vh;
+  overflow-y: auto; /* Enables vertical scrolling */
+  margin-bottom: 40px;
+  padding: 5px;
+  
+  /* Added for smoother scrolling experience */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* For better scrolling on iOS */
+}
+
+.scrollable_conversations_list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 70%; /* Width of the list container */
+}
+
+.scrollable_conversations_list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 15px 0;
+  border: 1.5px solid grey;
+  border-radius: 40px;
+  padding: 5px 5px; /* Added consistent padding */
+  min-height: 5px;
+  font-size: 0.8rem;
+  word-wrap: break-word;
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.3);
+  transition: background-color 0.2s ease; /* Smooth hover transition */
+}
+
+.scrollable_conversations_list li:hover {
+  color: black;
+  background-color: #e4e3e3;
+}
+
+.icon {
+  position: relative;
+  margin-top: 20px;
+  margin-left: 10px;
+  width: 45px;
+  padding: 8px;
+  padding-bottom: 5px;
+  padding-right: 5px;
+  color: #0070f3;
+  border: 2px solid #0070f3;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: width 0.3s ease, background-color 0.3s ease;
+  overflow: hidden;
+}
+
+.message {
+  position: absolute; /* Position absolutely */
+  left: 50px; /* Position to the right of the icon */
+  color: white;
+  margin-left: 1vh;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease-in;
+  pointer-events: none;
+}
+
+.icon:hover {
+  width: 270px;
+  background-color: #0070f3;
+  color: white;
+}
+
+.icon:hover .message {
+  opacity: 1;
+}
+
+.conversation_history {
+  display: none;
+  position: absolute;
+  width: 20%;
+  height: 59%;
+  margin-top: 6vh;
+  margin-left: 0%;
+  border: 1.5px solid grey;
+  border-radius: 40px;
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.title {
+  margin-left: 25%;
+}
+
+.conversation_item {
+  display: flex;
+  align-items: top;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.delete_icon {
+  position: absolute;
+  margin-left: 45px;
+  cursor: pointer;
+  color: #0278ff;
+  margin-left: 21vh;
+}
+
+.delete_icon:hover {
+  color: #005bb5;
+}
+
+.scrollable_conversations_list a {
+  text-decoration: none;
+  color: black;
+}
+
+.loading_indicator {
+  display: flex;
+  margin-left: 25%;
+}
+
+.settings_icon {
+  position: relative;
+  margin-top: 45px;
+  margin-left: 10px;
+  width: 45px;
+  padding: 8px;
+  padding-bottom: 5px;
+  padding-right: 5px;
+  color: #0070f3;
+  border: 2px solid #0070f3;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: width 0.3s ease, background-color 0.3s ease;
+  overflow: hidden;
+}
+
+.settings_icon:hover {
+  width: 110px;
+  background-color: #0070f3;
+  color: white;
+}
+
+.settings_icon:hover .settings_message {
+  opacity: 1;
+}
+
+.section_zone {
+  width: 20vh;
+  margin-top: 10vh;
+}
+
+.settings_message {
+  position: absolute; /* Position absolutely */
+  left: 50px; /* Position to the right of the icon */
+  color: white;
+  margin-left: 1vh;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease-in;
+  pointer-events: none; /* Don't interfere with hover events */
+}

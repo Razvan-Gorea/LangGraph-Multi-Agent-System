@@ -1,0 +1,55 @@
+[
+    {
+        "type_c": "rest",
+        "name": "SimplyTransport",
+        "c_params": {
+            "base_url": "http://simplytransport.ie",
+            "api_key": "",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "timeout": 30,
+            "retries": 3,
+            "has_schema": "True"
+        },
+        "e_params": {
+        }
+    },
+    {
+        "type_c": "rest",
+        "name": "DayofTheWeek",
+        "c_params": {
+            "base_url": "http://fast-api:8000",
+            "api_key": "",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "timeout": 30,
+            "retries": 3,
+            "has_schema": "True"
+        },
+        "e_params": {
+            "url": "receive_webhook/DayOfTheWeek"
+        }
+    },
+    {
+        "type_c": "postgres",
+        "name": "postgres_database",
+        "c_params": {
+            "db_name": "mydatabase",
+            "user": "myuser",
+            "password": "mypassword",
+            "host": "postgres",
+            "port": 5432
+        },
+        "e_params": {
+            "event_type": "debezium",
+            "class": "io.debezium.connector.postgresql.PostgresConnector",
+            "topic": "business_management", 
+            "include_list": "public.*",
+            "plugin.name": "pgoutput",
+            "publication.name": "dbz_publication"
+        }
+
+    }
+]

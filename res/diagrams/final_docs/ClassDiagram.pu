@@ -1,0 +1,86 @@
+@startuml
+
+class ConnectorBuilder{
+    dict connectors
+    dict connector_types
+    SQLClient sqlclient
+    dict pinecone_schema
+    
+    -- INIT METHODS --
+    __init__(sqlclient, pinecone_schema_path)
+    set_integration_agent(integration_agent)
+    load_from_file(config_file_path)
+    -- STARTUP METHODS --
+    initial_load_connectors()
+    startup_all_connectors()
+    startup_connector(connector)
+    shutdown_all_connectors()
+    -- OTHER METHODS --
+    get_connector(name)
+    list_connector()
+    add_new_connector(connector)
+    list_all_specific_type_connector(filter_attr, filter_value)
+    
+}
+
+abstract ConnectorBase{
+    str type_c
+    str name
+    bool active
+    
+    __init__(config)
+    startup(integration_agent)
+    shutdown()
+}
+
+class RestConnector{
+    str type_c
+    str name
+    bool active
+    str base_url
+    str api_key
+    dict headers
+    int timeout
+    int retries
+    str schema
+    
+    -- INIT METHODS --
+    __init__(config)
+    load_schema()
+    load_metadata()
+    -- REQUEST METHODS --
+    request_handler(method, endpoint, params, data)
+    
+    get(endpoint, params)
+    post(endpoint, data)
+    put(endpoint, data)
+    delete(endpoint)
+    
+}
+
+class PostgresConnector{
+    str type_c
+    str name
+    bool active
+    dict connection_params
+    dict event_config
+    monitor_thread
+    bool stop_monitoring
+    
+    -- INIT METHODS --
+    __init__(config)
+    startup(integration_agent)
+    load_metadata()
+    -- EVENT METHODS --
+    debezium_connector()
+    stop_monitoring_events()
+    start_monitoring(integration_event, kafka_bootstrap_servers)
+    _monitor_events(integration_agent, kafka_bootstrap_servers)
+    -- REQUEST METHODS --
+    execute_sql_query(query)
+}
+
+
+RestConnector -up-|> ConnectorBase
+PostgresConnector -up-|> ConnectorBase
+@enduml

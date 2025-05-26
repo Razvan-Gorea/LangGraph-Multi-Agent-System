@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "username": "john_doe",
+    "email": "john.doe@example.com",
+    "password": "hello",
+    "is_admin": true,
+    "permissions": ["SimplyTransport", "postgres_database"]
+  },
+  {
+    "id": 2,
+    "username": "jane_smith",
+    "email": "jane.smith@example.com",
+    "password": "hello",
+    "is_admin": false,
+    "permissions": ["postgres_database"]
+  },
+  {
+    "id": 3,
+    "username": "alice_jones",
+    "email": "alice.jones@example.com",
+    "password": "hello",
+    "is_admin": false,
+    "permissions": ["SimplyTransport"]
+  },
+  {
+    "id": 4,
+    "username": "bob_brown",
+    "email": "bob.brown@example.com",
+    "password": "hello",
+    "is_admin": true,
+    "permissions": ["SimplyTransport", "postgres_database", "DayofTheWeek"]
+  },
+  {
+    "id": 5,
+    "username": "charlie_black",
+    "email": "charlie.black@example.com",
+    "password": "hello",
+    "is_admin": false,
+    "permissions": []
+  }
+]

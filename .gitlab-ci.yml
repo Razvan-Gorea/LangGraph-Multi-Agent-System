@@ -1,0 +1,81 @@
+
+stages:          # List of stages for jobs, and their order of execution
+  - build
+  - test
+  - deploy
+
+variables:
+  ROOT_PATH: "src/application/front_end/docgenie"
+  NODE_VERSION: "20.9.0"
+
+build-backend:       # This job runs in the build stage, which runs first.
+  stage: build
+  script:
+    - echo "I give up on building wheels here."
+
+build-frontend:
+  stage: build
+  image: node:${NODE_VERSION}
+  script:
+    - cd ${ROOT_PATH} # Go to the Next.js application root
+
+    - | # Checking for package-lock.json
+      if [ ! -f package-lock.json ]; then
+        echo "Error: package-lock.json not found in ${ROOT_PATH}!"
+        exit 1
+      fi
+
+    - | # Checking for package-lock.json
+      if [ ! -f package.json ]; then
+        echo "Error: package.json not found in ${ROOT_PATH}!"
+        exit 1
+      fi
+
+    - npm ci --legacy-peer-deps --verbose 
+    
+    - npm run build 
+
+python-e2e-tests:
+  stage: test
+  script:
+    - pip install -r src/requirements.txt
+    - cd src
+    - python -m pytest tests/e2e
+
+python-unit-tests:   # This job runs in the test stage.
+  stage: test    # It only starts when the job in the build stage completes successfully.
+  script:
+    - pip install -r src/requirements.txt
+    - cd src
+    - coverage run -m pytest tests/unit --junitxml=../unittests.xml
+    - coverage report -m --omit="/usr/local/lib/python3.9/dist-packages/*,/usr/lib/python3/dist-packages/*"
+  artifacts:
+    when: always
+    reports:
+      junit: unittests.xml
+  coverage: /TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/
+
+javascript-unit-tests:
+  stage: test
+  script:
+    - cd ${ROOT_PATH}
+
+    - npm ci --legacy-peer-deps --verbose
+
+    - npx jest ./tests --ci --coverage --reporters=default --reporters=jest-junit
+  variables:
+    JEST_JUNIT_OUTPUT_NAME: "jsunittests.xml"
+    JEST_JUNIT_OUTPUT_DIR: "../../../../" 
+  artifacts:
+    reports:
+      junit: jsunittests.xml
+  coverage: /All files[^|]*\|[^|]*\|[^|]*\|[^|]*\|[^|]*\s+([\d\.]+)/
+
+formatting-tests:   # This job also runs in the test stage.
+  stage: test    # It can run at the same time as unit-test-job (in parallel).
+  script:
+    - pip install -r src/requirements.txt
+    - basedpyright --pythonversion 3.10 --writebaseline --gitlabcodequality report.json # static type checks here. 
+  artifacts:
+    reports:
+        codequality: report.json

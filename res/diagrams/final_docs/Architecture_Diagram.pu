@@ -1,0 +1,39 @@
+@startuml
+actor "Client" as Client
+
+node "Next JS" as NextJS{
+    component Routing
+}
+
+node "Application Server" as Server {
+    component FastAPI
+    component RAGAgent
+    component IntegrationAgent
+}
+
+node "Databases" as Databases {
+    component "Vector Store" as VectorStore
+    component SQLDB
+}
+
+node "External Services" as Services {
+    component "LLM Call" as LLM
+    component "Underlying Datastores" as Datastores
+}
+
+node "Event Detection" as EventDetection {
+    component Connector
+}
+
+Client -Down-> Routing : "Makes query"
+Routing -Down-> FastAPI : "Interacts with"
+FastAPI <--> SQLDB : "Get User Data"
+FastAPI -Down-> RAGAgent : "User Query"
+VectorStore -Up-> RAGAgent  : "Get Context"
+RAGAgent -Left-> LLM : "Generate Response"
+
+Connector -Down-> Datastores : "Listen for Changes"
+Connector -Right-> IntegrationAgent : "Event Detected"
+IntegrationAgent -Down-> VectorStore : "Update Context"
+
+@enduml

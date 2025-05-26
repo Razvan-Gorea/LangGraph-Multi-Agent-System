@@ -1,0 +1,44 @@
+/* UserPage.module.css */
+
+.container {
+    padding: 20px;
+    margin-top: 70px;
+}
+
+.searchContainer {
+    margin-bottom: 20px;
+}
+
+.searchField {
+    padding: 8px;
+    margin-right: 10px;
+}
+
+.searchButton {
+    padding: 8px 15px;
+    background-color: #0070f3;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.tableHeader {
+    background-color: #0070f3;
+    color: white;
+}
+
+.tableHeaderCell {
+    padding: 10px;
+    text-align: left;
+}
+
+.tableCell {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}

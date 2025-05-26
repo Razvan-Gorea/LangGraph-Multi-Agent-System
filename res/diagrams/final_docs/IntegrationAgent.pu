@@ -1,0 +1,16 @@
+@startuml
+
+State Start <<start>>
+State End <<end>>
+
+State Query
+State Formatter
+State Upserter
+
+
+Start --> Query
+Query --> Formatter
+Formatter --> Upserter
+Upserter --> End
+
+@enduml

@@ -1,0 +1,27 @@
+@startuml
+
+skinparam linetype ortho
+
+object Permission {
+    * id: int <<generated>>
+    __
+    * permission_name: str
+}
+
+object PermissionUser {
+    user_id: int
+    permission_id: int
+}
+
+object User{
+    * id: int <<generated>>
+    --
+    * username: str
+    * email: str
+    * password: str
+    * is_admin: bool
+}
+@enduml
+
+User -right- PermissionUser
+Permission -left- PermissionUser

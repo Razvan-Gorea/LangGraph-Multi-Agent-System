@@ -1,0 +1,21 @@
+@startuml
+
+State Start <<start>>
+State End <<end>>
+
+State "Supervisor" as SupervisorNode {
+}
+
+State "Context" as ContextNode
+State "Gen" as GenNode
+
+Start -Down-> SupervisorNode
+SupervisorNode -Right-> End : [Got Answer]
+
+
+SupervisorNode -Down-> ContextNode : [Get more context]
+SupervisorNode --> GenNode : [Format answer] 
+ContextNode --> SupervisorNode : [Return Context]
+GenNode --> SupervisorNode : [Return Answer]
+
+@enduml

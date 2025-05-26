@@ -1,0 +1,77 @@
+@startuml
+class Web_Client {
+user_prompt
+user_id
+send_prompt()
+display_response()
+}
+
+class LLM_Client {
+prompt
+response
+generate_response()
+}
+
+class Logger {
+date
+time
+user_id
+prompt
+response
+log()
+display_log()
+}
+
+class Auth {
+user_id
+user_permissions()
+}
+
+class Reader {
+user_permissions_info
+user_prompt
+retrieve_context()
+}
+
+class Context_Guard {
+context
+context_check()
+}
+
+class Reconciliation {
+changed_datastores
+datastores_check()
+update_individual_embeddings()
+overall_embedding_update()
+}
+
+class Vector_Client {
+write_embedding()
+read_embedding()
+}
+
+class SQL_Client {
+environment
+engine
+session
+base
+create_session()
+add_instance()
+query_all()
+query_by_id()
+delete_instance()
+}
+
+class Query_History {
+
+}
+
+Web_Client -right- Auth
+Logger -right- Web_Client
+Auth -- Reader
+Reader -- Context_Guard
+Context_Guard -left- LLM_Client
+Web_Client -- LLM_Client
+Reader -- Vector_Client
+Vector_Client -- Reconciliation
+@enduml

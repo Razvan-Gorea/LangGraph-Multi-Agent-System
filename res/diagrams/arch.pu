@@ -1,0 +1,35 @@
+@startuml
+
+actor "Client (Web Browser)" as Client
+
+node "Application Server" {
+  component "FastAPI"
+  component "Logging"
+  component "Authorisation"
+  component "Query History"
+}
+
+node "External Services" {
+  component "External LLM"
+}
+
+node "Databases" {
+  database "Mongo Vector Database"
+  database "Underlying Datastores"
+  database "Log DB"
+  database "Query History DB"
+  database "Auth DB"
+}
+
+Client -down-> "FastAPI" : Interacts with
+"FastAPI" -down-> "External LLM" : Calls for NLP tasks
+"FastAPI" -down-> "Mongo Vector Database" : Reads/Writes vectors
+"FastAPI" -down-> "Logging" : Logs activity
+"FastAPI" -down-> "Query History" : Use Query History
+"Query History" -down-> "Query History DB" : Store Query History
+"Logging" -down-> "Log DB" : Stores logs
+"FastAPI" -down-> "Authorisation" : Manages user authentication
+"Authorisation" -down-> "Auth DB" : Validates user credentials
+"Underlying Datastores" -up-> "Mongo Vector Database" : Data Ingestion
+
+@enduml
