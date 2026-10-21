@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  FRONTEND_DIR: src/application/front_end/docgenie
+  NODE_VERSION: "20.9.0"
+  PYTHON_VERSION: "3.10"
+
+jobs:
+  python-unit-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src
+    env:
+      SQL_LITE_DB_STRING: sqlite:///./test.db
+      LOCAL_HOST_BACKEND_IP: 0.0.0.0
+      LOCAL_HOST_FRONTEND_IP: 0.0.0.0
+      DEBUG_MODE: "False"
+      PINECONE_API_KEY: dummy
+      DEEPSEEK_API_KEY: dummy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: coverage run -m pytest tests/unit --junitxml=../unittests.xml
+      - run: coverage report -m
+        if: always()
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-unit-junit
+          path: unittests.xml
+
+  # Needs live Pinecone + Mistral; skipped (not failed) when the secrets are absent.
+  python-e2e-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src
+    env:
+      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      SQL_LITE_DB_STRING: sqlite:///./test.db
+      LOCAL_HOST_BACKEND_IP: 0.0.0.0
+      LOCAL_HOST_FRONTEND_IP: 0.0.0.0
+      DEBUG_MODE: "False"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for secrets
+        id: secrets
+        run: |
+          if [ -n "$PINECONE_API_KEY" ] && [ -n "$DEEPSEEK_API_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::PINECONE_API_KEY / DEEPSEEK_API_KEY not set - skipping e2e tests"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/requirements.txt
+      - if: steps.secrets.outputs.present == 'true'
+        run: pip install -r requirements.txt
+      - if: steps.secrets.outputs.present == 'true'
+        run: python -m pytest tests/e2e
+
+  type-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/requirements.txt
+      - run: pip install -r requirements.txt
+      # Unlike the GitLab job, this does not rewrite the baseline, so new type errors fail the build.
+      - run: basedpyright --pythonversion ${{ env.PYTHON_VERSION }}
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.FRONTEND_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.FRONTEND_DIR }}/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npx jest ./tests --ci --coverage
+      - run: npm run lint
+        continue-on-error: true
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.FRONTEND_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.FRONTEND_DIR }}/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npm run build
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # src/Dockerfile does `COPY .env .`, and .env is gitignored
+      - run: cp src/.env_example src/.env
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: src
+          push: false
+          tags: docgenie-app:ci
+          cache-from: type=gha,scope=docgenie-app
+          cache-to: type=gha,mode=max,scope=docgenie-app
+      - uses: docker/build-push-action@v6
+        with:
+          context: src/external/rest_example
+          push: false
+          tags: fast-api-example:ci
+          cache-from: type=gha,scope=rest-example
+          cache-to: type=gha,mode=max,scope=rest-example
