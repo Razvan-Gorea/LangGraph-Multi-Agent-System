@@ -7,8 +7,8 @@ on:
 
 env:
   FRONTEND_DIR: src/application/front_end/docgenie
-  NODE_VERSION: "20.9.0"
-  PYTHON_VERSION: "3.10"
+  NODE_VERSION: "24"
+  PYTHON_VERSION: "3.12"
 
 jobs:
   python-unit-tests:
@@ -22,19 +22,19 @@ jobs:
       LOCAL_HOST_FRONTEND_IP: 0.0.0.0
       DEBUG_MODE: "False"
       PINECONE_API_KEY: dummy
-      DEEPSEEK_API_KEY: dummy
+      LLM_API_KEY: dummy
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: src/requirements.txt
-      - run: pip install -r requirements.txt
+          cache-dependency-path: src/requirements*.txt
+      - run: pip install -r requirements-dev.txt
       - run: coverage run -m pytest tests/unit --junitxml=../unittests.xml
       - run: coverage report -m
         if: always()
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: python-unit-junit
@@ -48,29 +48,29 @@ jobs:
         working-directory: src
     env:
       PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
       SQL_LITE_DB_STRING: sqlite:///./test.db
       LOCAL_HOST_BACKEND_IP: 0.0.0.0
       LOCAL_HOST_FRONTEND_IP: 0.0.0.0
       DEBUG_MODE: "False"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check for secrets
         id: secrets
         run: |
-          if [ -n "$PINECONE_API_KEY" ] && [ -n "$DEEPSEEK_API_KEY" ]; then
+          if [ -n "$PINECONE_API_KEY" ] && [ -n "$LLM_API_KEY" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::PINECONE_API_KEY / DEEPSEEK_API_KEY not set - skipping e2e tests"
+            echo "::notice::PINECONE_API_KEY / LLM_API_KEY not set - skipping e2e tests"
           fi
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         if: steps.secrets.outputs.present == 'true'
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: src/requirements.txt
+          cache-dependency-path: src/requirements*.txt
       - if: steps.secrets.outputs.present == 'true'
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
       - if: steps.secrets.outputs.present == 'true'
         run: python -m pytest tests/e2e
 
@@ -80,13 +80,13 @@ jobs:
       run:
         working-directory: src
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: src/requirements.txt
-      - run: pip install -r requirements.txt
+          cache-dependency-path: src/requirements*.txt
+      - run: pip install -r requirements-dev.txt
       # Unlike the GitLab job, this does not rewrite the baseline, so new type errors fail the build.
       - run: basedpyright --pythonversion ${{ env.PYTHON_VERSION }}
 
@@ -96,16 +96,14 @@ jobs:
       run:
         working-directory: ${{ env.FRONTEND_DIR }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: ${{ env.FRONTEND_DIR }}/package-lock.json
-      - run: npm ci --legacy-peer-deps
+      - run: npm ci
       - run: npx jest ./tests --ci --coverage
-      - run: npm run lint
-        continue-on-error: true
 
   frontend-build:
     runs-on: ubuntu-latest
@@ -113,30 +111,28 @@ jobs:
       run:
         working-directory: ${{ env.FRONTEND_DIR }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: ${{ env.FRONTEND_DIR }}/package-lock.json
-      - run: npm ci --legacy-peer-deps
+      - run: npm ci
       - run: npm run build
 
   docker-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      # src/Dockerfile does `COPY .env .`, and .env is gitignored
-      - run: cp src/.env_example src/.env
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           context: src
           push: false
           tags: docgenie-app:ci
           cache-from: type=gha,scope=docgenie-app
           cache-to: type=gha,mode=max,scope=docgenie-app
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: src/external/rest_example
           push: false
