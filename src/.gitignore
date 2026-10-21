@@ -1,48 +1,35 @@
-# Vim
-*.swp
 # Python
-venv
+venv/
 .venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Test / coverage output
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+junit.xml
+unittests.xml
+
+# Secrets and local state
 .env
-*.pyc
-__pycache__
-.pytest_cache
 *.db
-.vscode/
-.vscode/*
-.vscode
-# Next.js
-
-# Dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# Next.js build output
-/.next
-/out
+*.pem
 
 # Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Testing
-/coverage
-
-# Production environment variables
-.env.local
-.env.*.local
-
-# Miscellaneous
-.DS_Store
-*.pem
 *.log
 
-# TypeScript cache
-*.tsbuildinfo
+# Generated tooling output
+graphify-out/
 
-# Mac system files
+# Editors / OS
+*.swp
+.vscode/
+.idea/
+.DS_Store
 Thumbs.db

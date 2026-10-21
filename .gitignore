@@ -1,0 +1,12 @@
+# CI writes this to the repo root when the unit-test command is run locally
+unittests.xml
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Claude Code local settings
+.claude/settings.local.json
+
+CLAUDE.md
