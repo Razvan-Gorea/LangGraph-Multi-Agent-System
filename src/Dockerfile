@@ -9,7 +9,7 @@ RUN npm ci --legacy-peer-deps --verbose
 
 WORKDIR /
 
-FROM python:3.10.11-slim
+FROM python:3.10-slim-bookworm
 
 # Get Node.js and npm
 RUN apt-get update && \
