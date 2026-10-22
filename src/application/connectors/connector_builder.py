@@ -83,6 +83,7 @@ class ConnectorBuilder():
             connector.startup(self.integration_agent)
         except Exception as e:
             print(Fore.RED + "ERROR" + Style.RESET_ALL + f":    [{connector.name}] {e}")
+    
     def shutdown_all_connectors(self):
         """
             Go to each connector and run its shutdown method.

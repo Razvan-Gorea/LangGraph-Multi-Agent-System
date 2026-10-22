@@ -1,4 +1,4 @@
-# Stage 1: Frontend (same Debian release as the final image, so native node_modules binaries match its libc)
+# Stage 1: Frontend build (same Debian release as the final image, so the node binary and native modules match its libc)
 FROM node:24-bookworm-slim AS frontend
 
 WORKDIR /application/front_end/docgenie
@@ -8,6 +8,11 @@ COPY application/front_end/docgenie/package*.json ./
 
 RUN npm ci
 
+COPY application/front_end/docgenie ./
+
+# next.config.mjs sets output: "standalone", so .next/standalone holds a server with only the traced deps
+RUN npm run build
+
 # Stage 2: Backend (Python)
 FROM python:3.12-slim-bookworm
 
@@ -16,20 +21,22 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Get Node.js and npm from the frontend stage
+# only the node binary is needed at runtime (the standalone server is run with `node server.js`, no npm)
 COPY --from=frontend /usr/local/bin/node /usr/local/bin/node
-COPY --from=frontend /usr/local/lib/node_modules /usr/local/lib/node_modules
-RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm
 
 # Verify Node.js installation
-RUN node --version && npm --version
+RUN node --version
 
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY application /application
-COPY --from=frontend /application/front_end/docgenie/node_modules /application/front_end/docgenie/node_modules
+COPY --from=frontend /application/front_end/docgenie/.next/standalone /application/front_end/docgenie
+COPY --from=frontend /application/front_end/docgenie/.next/static /application/front_end/docgenie/.next/static
+
+# tells main.py to run the built frontend instead of `npm run dev`
+ENV FRONTEND_STANDALONE=1
 
 # Expose the ports
 EXPOSE 8888

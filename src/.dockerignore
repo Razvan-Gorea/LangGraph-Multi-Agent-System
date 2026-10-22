@@ -4,3 +4,13 @@ venv
 **/__pycache__
 *.db
 .env
+.git
+.pytest_cache
+graphify-out
+**/coverage
+**/.swc
+**/*.tsbuildinfo
+**/tests
+application/front_end/docgenie/jest.*
+application/seeds/csv
+application/seeds/json

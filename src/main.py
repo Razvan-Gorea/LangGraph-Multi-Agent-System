@@ -83,7 +83,12 @@ if __name__ == "__main__":
         npm_path = "npm"
 
     command=[npm_path, "run", "dev"]
+    next_env = None
+    if os.environ.get("FRONTEND_STANDALONE"):
+        # Docker image ships the built standalone server, no npm; it must bind 0.0.0.0 to be reachable
+        command = ["node", "server.js"]
+        next_env = {**os.environ, "HOSTNAME": "0.0.0.0", "PORT": "3000"}
 
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=next_env)
     os.chdir("../../..")
     uvicorn.run(app, host=env.LOCAL_HOST_BACKEND_IP, port=8888)

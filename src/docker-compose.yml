@@ -2,10 +2,6 @@ services:
   zookeeper:
     image: quay.io/debezium/zookeeper:3.3
     container_name: zookeeper
-    ports:
-      - "2181:2181"
-      - "2888:2888"
-      - "3888:3888"
     networks:
       - app-network
 
@@ -74,6 +70,12 @@ services:
     container_name: fast-api-example
     ports:
       - "8000:8000"
+    healthcheck:
+      # the slim python image has no curl
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/day')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - app-network
 
@@ -88,6 +90,8 @@ services:
       postgres:
         condition: service_healthy
       kafka-connect:
+        condition: service_healthy
+      fast-api:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://0.0.0.0:3000/ && curl -f http://0.0.0.0:8888/"]
