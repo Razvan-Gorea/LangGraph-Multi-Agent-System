@@ -1,5 +1,6 @@
 from psycopg2.extras import DictCursor
 from confluent_kafka import Consumer
+import asyncio
 import psycopg2
 import json
 import requests
@@ -166,12 +167,12 @@ class PostgresConnector(ConnectorBase):
             
             if integration_agent:
                 # Re-run the same ingestion process that runs on startup
-                integration_agent.graph.invoke({
+                asyncio.run(integration_agent.graph.ainvoke({
                     "messages": [
                         {"role": "user", "content": "This is the name of the connector: " + self.event_config["name"] + ", " + "this is the type of connector: " + self.type_c + ", " + "This is the schema: " + str(self.load_metadata())},
                     ],
                     "data_store": self.event_config["name"]
-                })
+                }))
         consumer.close()
 
     def startup(self, integration_agent):
