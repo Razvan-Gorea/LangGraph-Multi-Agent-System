@@ -9,7 +9,6 @@ def get_llm(env: Environment, max_tokens: int) -> BaseChatModel:
     return init_chat_model(
         env.LLM_MODEL,
         model_provider=env.LLM_PROVIDER,
-        temperature=0,
         max_retries=2,
         max_tokens=max_tokens,
         api_key=env.LLM_API_KEY,
