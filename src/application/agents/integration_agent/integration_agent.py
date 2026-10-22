@@ -9,6 +9,7 @@ from application.agents.tools.upsert_dbutils import create_upserter_tool
 from application.agents.tools.list_ids_tool import list_namespace_ids_tool
 from application.agents.integration_agent.pinecone_schema import PineconeSchemaHolder
 
+from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.prebuilt import create_react_agent
 from langgraph.graph import START, END, StateGraph
 from langgraph.types import Command
@@ -47,6 +48,8 @@ class IntegrationAgent:
             Do NOT format the first message in the state, only format the LAST message.
             The id is an important field. It should be the Source, given to you by the previous agent, followed by a number.
             Use your tool to see if there are any ids that are in use in that source. Try not to overwrite ids.
+            Your final answer must be only a JSON object, no other text, in this shape:
+            {{"pinecone_items": [{{"id": "...", "text": "..."}}]}}
         '''
         self.upserter_prompt = f'''
             Your job is to take the formatted data, and upsert it to the pinecone database.
@@ -54,17 +57,26 @@ class IntegrationAgent:
             Make sure to upsert all of the data.
         '''
         
-        self.query_agent = create_react_agent(
-            model=self.llm,
-            tools=create_connector_tool(self.connector_builder),
-            prompt=self.query_prompt,
-        ) 
+        # with MCP on, the tools come from the MCP server and the agent is built on first use
+        self.mcp_client = None
+        self.query_agent = None
+        if env.MCP_SERVER_URL:
+            self.mcp_client = MultiServerMCPClient({"connectors": {
+                "transport": "streamable_http",
+                "url": env.MCP_SERVER_URL,
+                "headers": {"Authorization": f"Bearer {env.MCP_AUTH_TOKEN}"},
+            }})
+        else:
+            self.query_agent = create_react_agent(
+                model=self.llm,
+                tools=create_connector_tool(self.connector_builder),
+                prompt=self.query_prompt,
+            )
         
         self.formatter_agent = create_react_agent(
             model=self.llm,
             tools=list_namespace_ids_tool(self.dbutils),
             prompt=self.formatter_prompt,
-            response_format=PineconeSchemaHolder
         )
         
         self.upserter_agent = create_react_agent(
@@ -76,7 +88,7 @@ class IntegrationAgent:
 
     def construct_graph(self):
         builder = StateGraph(IntegrationState)
-        builder.add_node("query_node", self.query_node)
+        builder.add_node("query_node", self.aquery_node if self.mcp_client else self.query_node)
         builder.add_node("formatter_node", self.formatter_node)
         builder.add_node("upserter_node", self.upserter_node)
 
@@ -98,12 +110,28 @@ class IntegrationAgent:
             }
         )
  
+    async def aquery_node(self, state: IntegrationState) -> Command[Any]:
+        if self.query_agent is None:
+            # server is mounted in this same app, so tools can only be fetched once it is serving
+            self.query_agent = create_react_agent(
+                model=self.llm,
+                tools=await self.mcp_client.get_tools(),
+                prompt=self.query_prompt,
+            )
+        result = await self.query_agent.ainvoke(input=state, config={"callbacks": self.callbacks})
+        return Command(
+            update={
+                "messages": [
+                    HumanMessage(content=result["messages"][-1].content, name='query')
+                ]
+            }
+        )
+
     def similarity_node(self, state: IntegrationState):
         pass
     def formatter_node(self, state: IntegrationState) -> Command[Any]:
         result = self.formatter_agent.invoke(input=state, config={"callbacks": self.callbacks})
-        result = result["structured_response"]
-        actual_message = result.repr()
+        actual_message = PineconeSchemaHolder.from_llm_text(result["messages"][-1].content).repr()
         print(actual_message)
 
         return Command(
