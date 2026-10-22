@@ -23,7 +23,7 @@ services:
     # logical WAL is required for Debezium CDC
     command: ["postgres", "-c", "wal_level=logical", "-c", "max_wal_senders=10", "-c", "max_replication_slots=10"]
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # runs on first init of the data volume only
@@ -94,7 +94,7 @@ services:
       fast-api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://0.0.0.0:3000/ && curl -f http://0.0.0.0:8888/"]
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:3000/ && curl -f http://0.0.0.0:8888/docs"]
       interval: 10s
       timeout: 5s
       retries: 5
