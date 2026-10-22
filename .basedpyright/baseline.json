@@ -2,14 +2,6 @@
     "files": {
         "./src/application/agents/integration_agent/integration_agent.py": [
             {
-                "code": "reportCallIssue",
-                "range": {
-                    "startColumn": 12,
-                    "endColumn": 17,
-                    "lineCount": 1
-                }
-            },
-            {
                 "code": "reportArgumentType",
                 "range": {
                     "startColumn": 61,
@@ -35,14 +27,6 @@
             }
         ],
         "./src/application/agents/supervisor_agent/supervisor_agent.py": [
-            {
-                "code": "reportCallIssue",
-                "range": {
-                    "startColumn": 12,
-                    "endColumn": 17,
-                    "lineCount": 1
-                }
-            },
             {
                 "code": "reportIndexIssue",
                 "range": {
