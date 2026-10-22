@@ -1,6 +1,7 @@
 from fastapi import Depends, APIRouter
 from typing import Annotated
 from fastapi import HTTPException
+from fastapi.responses import StreamingResponse
 from datetime import datetime, timezone
 from typing import Any
 
@@ -107,6 +108,22 @@ def create_response(convo_id: int, chat: Chat, sqlclient: SQLDep, supervisor_age
     sqlclient.add_object(response)
     
     return response
+
+@chatRouter.post("/conversation/{convo_id}/chat/response/stream")
+def create_response_stream(convo_id: int, chat: Chat, sqlclient: SQLDep, supervisor_agent: SupervisorAgentDep) -> StreamingResponse:
+    conversation = sqlclient.get_by_id(Conversation, convo_id)
+    user = sqlclient.get_by_id(User, conversation.user_id, eager_relationships=[User.permissions])
+
+    def stream():
+        answer = ""
+        for text in supervisor_agent.stream_input(chat.body, user.permissions):
+            answer += text
+            yield text
+        # only reached when the client read the whole stream, a dropped client saves nothing
+        if answer:
+            sqlclient.add_object(Chat(body="Response:" + answer, conversation_id=convo_id))
+
+    return StreamingResponse(stream(), media_type="text/plain")
 
 @chatRouter.delete("/conversation/{convo_id}/chat/{chat_id}")
 def delete_chat(chat_id: int, sqlclient: SQLDep):

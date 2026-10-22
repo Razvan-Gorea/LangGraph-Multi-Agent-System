@@ -71,8 +71,8 @@ describe('AdminPage Component', () => {
     
     // Checking that main elements are rendered
     expect(screen.getByText('DocGenie')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Enter User ID')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Enter User ID')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Search' })).not.toBeInTheDocument();
     
     // Wait for data to load onto the page and check user data is displayed
     await waitFor(() => {
@@ -144,48 +144,6 @@ describe('AdminPage Component', () => {
     // No user data should be displayed
     expect(screen.queryByText('ID')).not.toBeInTheDocument();
     expect(screen.queryByText('Username')).not.toBeInTheDocument();
-  });
-  
-  // Test search functionality
-  test('allows searching for a different user', async () => {
-    await act(async () => {
-      render(<AdminPage />);
-    });
-    
-    // Wait for initial data to load
-    await waitFor(() => {
-      expect(screen.getByText('testuser')).toBeInTheDocument();
-    });
-    
-    const input = screen.getByPlaceholderText('Enter User ID');
-    fireEvent.change(input, { target: { value: '456' } });
-    
-    // Click the search button
-    const searchButton = screen.getByRole('button', { name: 'Search' });
-    await act(async () => {
-      fireEvent.click(searchButton);
-    });
-    
-    // Verify router.push was called with the new user ID
-    expect(mockPush).toHaveBeenCalledWith('/admin/456');
-    
-    // Verify fetch was called with the updated URL
-    expect(global.fetch).toHaveBeenCalledWith(`http://127.0.0.1:8888/user/${mockParams.id}`);
-  });
-  
-  // Test user ID input
-  test('updates userId state when input changes', async () => {
-    await act(async () => {
-      render(<AdminPage />);
-    });
-    
-    const input = screen.getByPlaceholderText('Enter User ID');
-    
-    // Update the input value
-    fireEvent.change(input, { target: { value: '789' } });
-    
-    // Check that the input value was updated
-    expect(input.value).toBe('789');
   });
   
   // Test rendering of the permissions list

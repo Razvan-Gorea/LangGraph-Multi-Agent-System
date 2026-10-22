@@ -1,4 +1,4 @@
-from application.agents.extras import State, Router
+from application.agents.extras import State
 from application.agents.tools.query_dbutils import create_pinecone_tool
 from application.dbutils import DbUtils
 from application.environment import Environment
@@ -9,7 +9,7 @@ from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
 from langgraph.graph import START, END, StateGraph
 from langgraph.types import Command
-from typing import Literal, Optional
+from typing import Iterator, Literal, Optional
 
 class SupervisorAgent:
         
@@ -24,7 +24,8 @@ class SupervisorAgent:
         self.system_prompt = (
             f"You are a supervisor that manages a conversation between the following workers: {self.members}. " 
             "Given a user request, respond with which worker to go to next. The workers respond with their results and status. " 
-            "When you get any answer, respond with FINISH."
+            "When you get any answer, respond with FINISH. "
+            "Reply with only one word: " + ", ".join(self.options) + ". "
             "The first time around, use the context node."
         )
 
@@ -117,9 +118,10 @@ class SupervisorAgent:
         # here, we pass the state and our first prompt to the genclient (which will decide what to do next)
         # we pass it the router, which tells the agent what options it has, and give it the messages, 
         # which includes its prompt and the global state 
-        response = self.genclient.with_structured_output(Router).invoke(messages)
-        # decides where to go next, we are done if genclient told us to stop
-        goto = response["next"]
+        # plain text reply, forced tool_choice (with_structured_output) is rejected by some models
+        reply = str(self.genclient.invoke(messages).content)
+        # decides where to go next, we are done if genclient told us to stop (or said something unexpected)
+        goto = next((o for o in self.options if o in reply), "FINISH")
         if goto == "FINISH":
             # we cant finish until we have called each node at least once
             if self.context_limit > 0 and self.gen_limit > 0:
@@ -154,3 +156,24 @@ class SupervisorAgent:
                     self.gen_limit = 0
                     print(previous_step)
                     return previous_step
+
+    def stream_input(self, user_message: str, user_permissions: list[Permission]) -> Iterator[str]:
+        """Same graph and input as take_input, but yields the gen agent's answer as it is generated."""
+        try:
+            for chunk, metadata in self.graph.stream({
+                "messages" : [(
+                    "user", "Here is the user query: " + user_message + ". Here are the users permissions: " + str([perm.permission_name for perm in user_permissions])
+                )]
+            }, stream_mode="messages"):
+                # the context agent's facts and the supervisor's routing replies are not for the user
+                if not metadata.get("langgraph_checkpoint_ns", "").startswith("gen:"):
+                    continue
+                # anthropic can return a list of content blocks instead of a string
+                if isinstance(chunk.content, list):
+                    yield "".join(b.get("text", "") for b in chunk.content if isinstance(b, dict))
+                else:
+                    yield chunk.content
+        finally:
+            # take_input resets these when the graph reaches END, a dropped client never gets there
+            self.context_limit = 0
+            self.gen_limit = 0

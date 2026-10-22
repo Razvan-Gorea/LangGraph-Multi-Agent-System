@@ -184,6 +184,19 @@ def test_create_response_success(client: TestClient, sqlclient):
     assert response.status_code == 200
     assert content["conversation_id"] == 1
 
+def test_create_response_stream_success(client: TestClient, sqlclient):
+    sqlclient.add_object(create_test_conversation(id=1))
+    sqlclient.add_object(User(id=1, username="testuser", email="test@example.com", password="password", is_admin=False))
+
+    chat = create_test_chat(conversation_id=1, body="User Input")
+    response = client.post("/conversation/1/chat/response/stream", json=jsonable_encoder(chat))
+
+    assert response.status_code == 200
+    assert response.text == "Mock Agent Response"
+    # the full answer is saved once the stream ends
+    saved = client.get("/conversation/1/chat/all").json()
+    assert saved[-1]["body"] == "Response:Mock Agent Response"
+
 
 # delete_chat
 def test_delete_chat_not_found(client: TestClient):

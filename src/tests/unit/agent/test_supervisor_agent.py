@@ -5,7 +5,7 @@ from application.api.models.permission import Permission
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.types import Command
 from langgraph.graph import END
-from langchain_mistralai import ChatMistralAI
+from langchain_anthropic import ChatAnthropic
 
 from application.agents.supervisor_agent.supervisor_agent import SupervisorAgent
 
@@ -17,15 +17,15 @@ def test_initialization(mock_env: MagicMock, mock_dbutils: MagicMock, mock_pinec
     assert supervisor_agent.gen_limit == 0
     assert supervisor_agent.members == ["gen", "context"]
     assert supervisor_agent.options == ["gen", "context", "FINISH"]
-    assert isinstance(supervisor_agent.genclient, ChatMistralAI)
+    assert isinstance(supervisor_agent.genclient, ChatAnthropic)
     assert "You are a supervisor" in supervisor_agent.system_prompt
     assert supervisor_agent.gen_agent is not None
     assert supervisor_agent.context_agent is not None
     assert supervisor_agent.graph is not None
 
-def test_context_node(mock_chat_mistralai: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
+def test_context_node(mock_chat_llm: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
     mock_output = AIMessage(content="Context Facts")
-    mock_chat_mistralai.return_value = mock_output
+    mock_chat_llm.return_value = mock_output
     result = supervisor_agent.context(initial_state)
     
     assert isinstance(result, Command)
@@ -34,9 +34,9 @@ def test_context_node(mock_chat_mistralai: MagicMock, supervisor_agent: Supervis
     assert result.update["messages"][0].content == "Context Facts"
     assert result.update["messages"][0].name == "context"
 
-def test_context_node_empty_response(mock_chat_mistralai: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
+def test_context_node_empty_response(mock_chat_llm: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
     mock_output = AIMessage(content="")
-    mock_chat_mistralai.return_value = mock_output
+    mock_chat_llm.return_value = mock_output
     result = supervisor_agent.context(initial_state)
 
     assert isinstance(result, Command)
@@ -45,9 +45,9 @@ def test_context_node_empty_response(mock_chat_mistralai: MagicMock, supervisor_
     assert result.update["messages"][0].content == "" # Empty content if no messages
     assert result.update["messages"][0].name == "context"
 
-def test_gen_node(mock_chat_mistralai: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
+def test_gen_node(mock_chat_llm: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
     mock_output = AIMessage(content="Gen Facts")
-    mock_chat_mistralai.return_value = mock_output
+    mock_chat_llm.return_value = mock_output
     result = supervisor_agent.gen(initial_state)
 
     assert isinstance(result, Command)
@@ -56,9 +56,9 @@ def test_gen_node(mock_chat_mistralai: MagicMock, supervisor_agent: SupervisorAg
     assert result.update["messages"][0].content == "Gen Facts"
     assert result.update["messages"][0].name == "gen"
 
-def test_gen_node_empty_response(mock_chat_mistralai: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
+def test_gen_node_empty_response(mock_chat_llm: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
     mock_output = AIMessage(content="")
-    mock_chat_mistralai.return_value = mock_output
+    mock_chat_llm.return_value = mock_output
     result = supervisor_agent.gen(initial_state)
 
     assert isinstance(result, Command)
@@ -67,10 +67,8 @@ def test_gen_node_empty_response(mock_chat_mistralai: MagicMock, supervisor_agen
     assert result.update["messages"][0].content == "" # Empty content if no messages
     assert result.update["messages"][0].name == "gen"
 
-def test_supervisor_node_chooses_context(mock_chat_mistralai_structured: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
-    mock_router = MagicMock()
-    mock_router.invoke.return_value = {"next": "context"}
-    mock_chat_mistralai_structured.return_value = mock_router
+def test_supervisor_node_chooses_context(mock_chat_llm: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
+    mock_chat_llm.return_value = AIMessage(content="context")
     result = supervisor_agent.supervisor(initial_state)
 
     assert isinstance(result, Command)
@@ -79,10 +77,8 @@ def test_supervisor_node_chooses_context(mock_chat_mistralai_structured: MagicMo
     assert supervisor_agent.context_limit == 1
     assert supervisor_agent.gen_limit == 0
 
-def test_supervisor_node_chooses_gen(mock_chat_mistralai_structured: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
-    mock_router = MagicMock()
-    mock_router.invoke.return_value = {"next": "gen"}
-    mock_chat_mistralai_structured.return_value = mock_router
+def test_supervisor_node_chooses_gen(mock_chat_llm: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
+    mock_chat_llm.return_value = AIMessage(content="gen")
     result = supervisor_agent.supervisor(initial_state)
 
     assert isinstance(result, Command)
@@ -91,11 +87,9 @@ def test_supervisor_node_chooses_gen(mock_chat_mistralai_structured: MagicMock, 
     assert supervisor_agent.context_limit == 0
     assert supervisor_agent.gen_limit == 1
 
-def test_supervisor_node_chooses_finish_and_gen_limit_reached(mock_chat_mistralai_structured: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
+def test_supervisor_node_chooses_finish_and_gen_limit_reached(mock_chat_llm: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
     supervisor_agent.gen_limit = 3
-    mock_router = MagicMock()
-    mock_router.invoke.return_value = {"next": "FINISH"}
-    mock_chat_mistralai_structured.return_value = mock_router
+    mock_chat_llm.return_value = AIMessage(content="FINISH")
     result = supervisor_agent.supervisor(initial_state)
 
     assert isinstance(result, Command)
@@ -104,11 +98,9 @@ def test_supervisor_node_chooses_finish_and_gen_limit_reached(mock_chat_mistrala
     assert supervisor_agent.context_limit == 1
     assert supervisor_agent.gen_limit == 3
 
-def test_supervisor_node_chooses_finish_and_context_limit_reached(mock_chat_mistralai_structured: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
+def test_supervisor_node_chooses_finish_and_context_limit_reached(mock_chat_llm: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
     supervisor_agent.context_limit = 3
-    mock_router = MagicMock()
-    mock_router.invoke.return_value = {"next": "FINISH"}
-    mock_chat_mistralai_structured.return_value = mock_router
+    mock_chat_llm.return_value = AIMessage(content="FINISH")
     result = supervisor_agent.supervisor(initial_state)
 
     assert isinstance(result, Command)
@@ -117,12 +109,10 @@ def test_supervisor_node_chooses_finish_and_context_limit_reached(mock_chat_mist
     assert supervisor_agent.context_limit == 3
     assert supervisor_agent.gen_limit == 1
 
-def test_supervisor_node_chooses_finish_and_both_limits_reached_and_both_called(mock_chat_mistralai_structured: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
+def test_supervisor_node_chooses_finish_and_both_limits_reached_and_both_called(mock_chat_llm: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
     supervisor_agent.context_limit = 1
     supervisor_agent.gen_limit = 1
-    mock_router = MagicMock()
-    mock_router.invoke.return_value = {"next": "FINISH"}
-    mock_chat_mistralai_structured.return_value = mock_router
+    mock_chat_llm.return_value = AIMessage(content="FINISH")
     result = supervisor_agent.supervisor(initial_state)
 
     assert isinstance(result, Command)
@@ -131,11 +121,9 @@ def test_supervisor_node_chooses_finish_and_both_limits_reached_and_both_called(
     assert supervisor_agent.context_limit == 1
     assert supervisor_agent.gen_limit == 1
 
-def test_supervisor_node_forces_gen_if_context_limit_reached_before_gen(mock_chat_mistralai_structured: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
+def test_supervisor_node_forces_gen_if_context_limit_reached_before_gen(mock_chat_llm: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
     supervisor_agent.context_limit = 3
-    mock_router = MagicMock()
-    mock_router.invoke.return_value = {"next": "context"} # Even if it chooses context
-    mock_chat_mistralai_structured.return_value = mock_router
+    mock_chat_llm.return_value = AIMessage(content="context")
     result = supervisor_agent.supervisor(initial_state)
 
     assert isinstance(result, Command)
@@ -144,12 +132,10 @@ def test_supervisor_node_forces_gen_if_context_limit_reached_before_gen(mock_cha
     assert supervisor_agent.context_limit == 3
     assert supervisor_agent.gen_limit == 1
 
-def test_supervisor_node_forces_context_if_gen_limit_reached_before_context(mock_chat_mistralai_structured: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
+def test_supervisor_node_forces_context_if_gen_limit_reached_before_context(mock_chat_llm: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
     supervisor_agent.gen_limit = 3
     
-    mock_router = MagicMock()
-    mock_router.invoke.return_value = {"next": "gen"} # even if it chooses gen
-    mock_chat_mistralai_structured.return_value = mock_router
+    mock_chat_llm.return_value = AIMessage(content="gen")
 
     result = supervisor_agent.supervisor(initial_state)
 
@@ -158,6 +144,36 @@ def test_supervisor_node_forces_context_if_gen_limit_reached_before_context(mock
     assert result.update == {"next": "context"}
     assert supervisor_agent.context_limit == 1
     assert supervisor_agent.gen_limit == 3
+
+def test_stream_input_only_yields_gen_tokens_and_resets_limits(supervisor_agent: SupervisorAgent):
+    supervisor_agent.context_limit = 1
+    supervisor_agent.gen_limit = 1
+    supervisor_agent.graph = MagicMock()
+    supervisor_agent.graph.stream.return_value = [
+        (AIMessage(content="facts"), {"langgraph_checkpoint_ns": "context:1|agent:2"}),
+        (AIMessage(content="FINISH"), {"langgraph_checkpoint_ns": "supervisor:3"}),
+        (AIMessage(content="The day "), {"langgraph_checkpoint_ns": "gen:4|agent:5"}),
+        (AIMessage(content=[{"type": "text", "text": "is Tuesday"}]), {"langgraph_checkpoint_ns": "gen:4|agent:5"}),
+    ]
+
+    assert "".join(supervisor_agent.stream_input("Test User Query", [])) == "The day is Tuesday"
+    assert supervisor_agent.graph.stream.call_args.kwargs["stream_mode"] == "messages"
+    assert supervisor_agent.context_limit == 0
+    assert supervisor_agent.gen_limit == 0
+
+def test_stream_input_resets_limits_when_client_stops_early(supervisor_agent: SupervisorAgent):
+    supervisor_agent.context_limit = 1
+    supervisor_agent.graph = MagicMock()
+    supervisor_agent.graph.stream.return_value = [
+        (AIMessage(content="The day "), {"langgraph_checkpoint_ns": "gen:4|agent:5"}),
+        (AIMessage(content="is Tuesday"), {"langgraph_checkpoint_ns": "gen:4|agent:5"}),
+    ]
+
+    stream = supervisor_agent.stream_input("Test User Query", [])
+    next(stream)
+    stream.close()
+
+    assert supervisor_agent.context_limit == 0
 
 def test_take_input_no_end_state(supervisor_agent: SupervisorAgent):
     mock_permission = MagicMock(spec=Permission)

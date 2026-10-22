@@ -38,10 +38,6 @@ jest.mock('react-icons/md', () => ({
   ),
 }));
 
-jest.mock('react-icons/gr', () => ({
-  GrSend: () => <div data-testid="send-icon" />,
-}));
-
 describe('Chat_Bot Component', () => {
   const mockParams = { id: '123' };
   const mockPush = jest.fn();
@@ -88,6 +84,17 @@ describe('Chat_Bot Component', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ id: 'new-conv', title: 'New Conversation', user_id: '123' })
+        });
+      } else if (url.includes('/chat/response/stream')) {
+        const encoder = new TextEncoder();
+        const chunks = [encoder.encode('Streamed '), encoder.encode('answer')];
+        return Promise.resolve({
+          ok: true,
+          body: {
+            getReader: () => ({
+              read: () => Promise.resolve(chunks.length ? { done: false, value: chunks.shift() } : { done: true })
+            })
+          }
         });
       } else if (url.includes('/chat/create')) {
         return Promise.resolve({
@@ -177,14 +184,13 @@ describe('Chat_Bot Component', () => {
       render(<Chat_Bot />);
     });
     
-    // Find the textarea and button
+    // Find the textarea
     const textarea = screen.getByPlaceholderText('Enter your message');
-    const submitButton = screen.getByTestId('send-icon').closest('button');
     
     // Type a message and submit
     await act(async () => {
       fireEvent.change(textarea, { target: { value: 'Hello bot' } });
-      fireEvent.click(submitButton);
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
     });
     
     await waitFor(() => {
@@ -203,6 +209,50 @@ describe('Chat_Bot Component', () => {
     });
   });
   
+  test('shows the streamed bot response', async () => {
+    await act(async () => {
+      render(<Chat_Bot />);
+    });
+
+    const textarea = screen.getByPlaceholderText('Enter your message');
+
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'Hello bot' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Streamed answer')).toBeInTheDocument();
+    });
+  });
+
+  test('ignores Enter while a response is being generated', async () => {
+    const base = global.fetch.getMockImplementation();
+    // the answer never arrives, so the page stays in its loading state
+    global.fetch.mockImplementation((url, options) =>
+      url.includes('/chat/response/stream') ? new Promise(() => {}) : base(url, options)
+    );
+
+    await act(async () => {
+      render(<Chat_Bot />);
+    });
+    const textarea = screen.getByPlaceholderText('Enter your message');
+
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'first' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+    });
+    await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'second' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+    });
+
+    const sent = global.fetch.mock.calls.filter(([url]) => url.includes('/chat/create'));
+    expect(sent).toHaveLength(1);
+  });
+
   // Testing the Enter key user submission
   test('submits message when Enter key is pressed', async () => {
     await act(async () => {
@@ -274,7 +324,6 @@ describe('ConversationHistory Component', () => {
       ],
       createConversationTitle: '',
       setCreateConversationTitle: jest.fn(),
-      createConversation: jest.fn(),
       handleDelete: jest.fn(),
       swapConversations: jest.fn()
     };
@@ -283,7 +332,7 @@ describe('ConversationHistory Component', () => {
     
     expect(screen.getByText('Conversation History')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('New Conversation')).toBeInTheDocument();
-    expect(screen.getByText('+')).toBeInTheDocument();
+    expect(screen.queryByText('+')).not.toBeInTheDocument();
     expect(screen.getByText('Conversation 1')).toBeInTheDocument();
     expect(screen.getByText('Conversation 2')).toBeInTheDocument();
     expect(screen.getAllByTestId('delete-icon').length).toBe(2);
@@ -297,7 +346,6 @@ describe('ConversationHistory Component', () => {
       conversationSideBarList: [{ id: 'conv1', title: 'Conversation 1' }],
       createConversationTitle: '',
       setCreateConversationTitle: jest.fn(),
-      createConversation: jest.fn(),
       handleDelete,
       swapConversations: jest.fn()
     };
@@ -318,7 +366,6 @@ describe('ConversationHistory Component', () => {
       conversationSideBarList: [{ id: 'conv1', title: 'Conversation 1' }],
       createConversationTitle: '',
       setCreateConversationTitle: jest.fn(),
-      createConversation: jest.fn(),
       handleDelete: jest.fn(),
       swapConversations
     };
@@ -339,7 +386,6 @@ describe('ConversationHistory Component', () => {
       conversationSideBarList: [],
       createConversationTitle: '',
       setCreateConversationTitle,
-      createConversation: jest.fn(),
       handleDelete: jest.fn(),
       swapConversations: jest.fn()
     };
@@ -352,29 +398,38 @@ describe('ConversationHistory Component', () => {
     expect(setCreateConversationTitle).toHaveBeenCalledWith('New Title');
   });
   
-  test('calls createConversation when button is clicked', () => {
-    const createConversation = jest.fn();
+  test('calls handleConversationEnter on key press and has no add button', () => {
+    const handleConversationEnter = jest.fn();
     const props = {
       conversation: true,
       conversationElement: { current: {} },
       conversationSideBarList: [],
       createConversationTitle: 'New Title',
       setCreateConversationTitle: jest.fn(),
-      createConversation,
       handleDelete: jest.fn(),
-      swapConversations: jest.fn()
+      swapConversations: jest.fn(),
+      handleConversationEnter
     };
     
     render(<ConversationHistory {...props} />);
     
-    const button = screen.getByText('+');
-    fireEvent.click(button);
+    fireEvent.keyDown(screen.getByPlaceholderText('New Conversation'), { key: 'Enter' });
     
-    expect(createConversation).toHaveBeenCalled();
+    expect(handleConversationEnter).toHaveBeenCalled();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });
 
 describe('ChatDisplay Component', () => {
+  test('shows the generating indicator only while pending', () => {
+    const chatLog = [{ id: 'chat1', body: 'User message' }];
+    const { rerender } = render(<ChatDisplay chatLog={chatLog} />);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    rerender(<ChatDisplay chatLog={chatLog} pending />);
+    expect(screen.getByRole('status')).toHaveTextContent('Generating response');
+  });
+
   test('renders chat messages correctly', () => {
     const chatLog = [
       { id: 'chat1', body: 'User message' },
@@ -438,7 +493,7 @@ describe('ChatInput Component', () => {
     render(<ChatInput {...props} />);
     
     expect(screen.getByPlaceholderText('Enter your message')).toBeInTheDocument();
-    expect(screen.getByTestId('send-icon')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
   
   test('updates userQuery when input changes', () => {
@@ -469,7 +524,7 @@ describe('ChatInput Component', () => {
     
     render(<ChatInput {...props} />);
     
-    const form = screen.getByTestId('send-icon').closest('form');
+    const form = screen.getByPlaceholderText('Enter your message').closest('form');
     fireEvent.submit(form);
     
     expect(handleSubmit).toHaveBeenCalled();

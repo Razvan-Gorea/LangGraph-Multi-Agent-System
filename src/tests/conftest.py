@@ -1,10 +1,15 @@
+import os
 import pytest
 from typing import Any
+
+# importing main builds the real chat models, and ChatAnthropic refuses a missing key (no network call is made)
+os.environ.setdefault("LLM_API_KEY", "test_api_key")
+
 from fastapi.testclient import TestClient
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 from langchain_core.messages import HumanMessage
-from langchain_mistralai import ChatMistralAI
+from langchain_anthropic import ChatAnthropic
 
 from main import app
 from application.environment import Environment
@@ -22,6 +27,10 @@ from application.api.models.chat import Chat
 class MockAgent():
     def take_input(self, input_message: str, permissions: str):
         return "Mock Agent Response"
+
+    def stream_input(self, input_message: str, permissions: str):
+        yield "Mock Agent "
+        yield "Response"
 
 @pytest.fixture(name='environment')
 def environment_fixture() -> Environment:
@@ -71,8 +80,8 @@ def client_fixture(sqlclient: SQLClient, dbutils: DbUtils):
 def mock_env():
     mock = MagicMock()
     mock.LLM_API_KEY = "test_api_key"
-    mock.LLM_PROVIDER = "mistralai"
-    mock.LLM_MODEL = "mistral-large-latest"
+    mock.LLM_PROVIDER = "anthropic"
+    mock.LLM_MODEL = "claude-sonnet-5-5"
     return mock
 
 @pytest.fixture
@@ -93,13 +102,8 @@ def initial_state():
     return {"messages": [HumanMessage(content="Test Query")]}
 
 @pytest.fixture
-def mock_chat_mistralai():
-    with patch.object(ChatMistralAI, "invoke") as mock:
-        yield mock
-
-@pytest.fixture
-def mock_chat_mistralai_structured():
-    with patch.object(ChatMistralAI, "with_structured_output") as mock:
+def mock_chat_llm():
+    with patch.object(ChatAnthropic, "invoke") as mock:
         yield mock
 
 # test data

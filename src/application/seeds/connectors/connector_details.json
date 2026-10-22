@@ -29,7 +29,7 @@
             "has_schema": "True"
         },
         "e_params": {
-            "url": "receive_webhook/DayOfTheWeek"
+            "url": "receive_webhook/DayofTheWeek"
         }
     },
     {

@@ -15,10 +15,6 @@ class GraphCallback(BaseCallbackHandler):
 class State(MessagesState):
     next: str
 
-class Router(TypedDict):
-    # THIS SHOULD BE DYNAMIC
-    next: Literal["context", "gen", "FINISH"]
-
 # State of the integration agent
 # When we re-format everything, maybe we move all this.
 class IntegrationState(MessagesState):
