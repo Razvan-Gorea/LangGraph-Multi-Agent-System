@@ -5,7 +5,6 @@ import type { FormEvent, KeyboardEvent } from "react";
 import { RiChatHistoryLine } from "react-icons/ri";
 import { useParams, useRouter } from "next/navigation";
 import { CgProfile } from "react-icons/cg";
-import { OrbitProgress } from "react-loading-indicators";
 
 import {
   ChatDisplay,
@@ -76,10 +75,11 @@ export default function Chat_Bot() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!userQuery.trim()) return;
+    if (!userQuery.trim() || isLoading) return;
 
     setIsLoading(true);
     const body = JSON.stringify({ body: userQuery, conversation_id: currentConversation });
+    setUserQuery("");
 
     const res = await fetch(`${API}/conversation/${currentConversation}/chat/create`, {
       method: "POST",
@@ -89,15 +89,31 @@ export default function Chat_Bot() {
     const data = await res.json();
     setChatLog((prevLog) => [...prevLog, data]);
 
-    const response = await fetch(`${API}/conversation/${currentConversation}/chat/response`, {
-      method: "POST",
-      headers: JSON_HEADERS,
-      body,
-    });
-    const reply = await response.json();
-    setChatLog((prevLog) => [...prevLog, reply]);
-    setUserQuery("");
-    setIsLoading(false);
+    try {
+      const response = await fetch(`${API}/conversation/${currentConversation}/chat/response/stream`, {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body,
+      });
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      // the "Response:" prefix is what ChatDisplay uses to tell bot messages from user ones
+      const id = `stream-${Date.now()}`;
+      let text = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        text += decoder.decode(value, { stream: true });
+        const reply = { id, body: "Response:" + text };
+        setChatLog((prevLog) =>
+          prevLog.some((m) => m.id === id)
+            ? prevLog.map((m) => (m.id === id ? reply : m))
+            : [...prevLog, reply],
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEnter = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -163,24 +179,21 @@ export default function Chat_Bot() {
           conversationSideBarList={conversationSideBarList}
           createConversationTitle={createConversationTitle}
           setCreateConversationTitle={setCreateConversationTitle}
-          createConversation={createConversation}
           handleDelete={handleDelete}
           swapConversations={swapConversations}
           handleConversationEnter={handleConversationEnter}
         />
         <section className="flex min-w-0 flex-1 flex-col">
-          <ChatDisplay chatLog={chatLog} />
-          <div className="flex h-8 justify-center">
-            {isLoading && (
-              <OrbitProgress variant="dotted" color="#0070f3" size="small" text="" textColor="" />
-            )}
-          </div>
+          {/* dots show until the first streamed token creates the bot message */}
+          <ChatDisplay
+            chatLog={chatLog}
+            pending={isLoading && !chatLog.at(-1)?.body?.startsWith("Response:")}
+          />
           <ChatInput
             userQuery={userQuery}
             setUserQuery={setUserQuery}
             handleSubmit={handleSubmit}
             handleEnter={handleEnter}
-            isLoading={isLoading}
           />
         </section>
       </div>

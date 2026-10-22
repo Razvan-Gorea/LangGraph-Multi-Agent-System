@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 
 type UserData = {
   id: string | number;
@@ -19,8 +17,6 @@ function AdminPage() {
   const { id } = useParams<{ id: string }>();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState(id || "");
-  const router = useRouter();
 
   useEffect(() => {
     fetchUserData();
@@ -31,11 +27,6 @@ function AdminPage() {
     const response = await fetch(`http://127.0.0.1:8888/user/${id}`);
     setUserData(response.ok ? await response.json() : null);
     setLoading(false);
-  };
-
-  const handleSearch = () => {
-    fetchUserData();
-    router.push(`/admin/${userId}`);
   };
 
   const rows: [string, React.ReactNode][] = userData
@@ -58,16 +49,6 @@ function AdminPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-4">
       <h2 className="text-2xl font-semibold">DocGenie</h2>
-      <div className="flex gap-2">
-        <Input
-          type="text"
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          placeholder="Enter User ID"
-        />
-        <Button onClick={handleSearch}>Search</Button>
-      </div>
-
       {loading && <p>Loading...</p>}
 
       {userData && (

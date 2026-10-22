@@ -3,9 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { Dispatch, FormEvent, KeyboardEvent, SetStateAction } from "react";
 import { MdDelete } from "react-icons/md";
-import { GrSend } from "react-icons/gr";
 
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +15,6 @@ type ConversationHistoryProps = {
   conversationSideBarList: Conversation[];
   createConversationTitle: string;
   setCreateConversationTitle: Dispatch<SetStateAction<string>>;
-  createConversation: () => void;
   handleDelete: (id: Conversation["id"]) => void;
   swapConversations: (id: Conversation["id"]) => void;
   handleConversationEnter?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -28,7 +25,6 @@ export function ConversationHistory({
   conversationSideBarList,
   createConversationTitle,
   setCreateConversationTitle,
-  createConversation,
   handleDelete,
   swapConversations,
   handleConversationEnter,
@@ -41,7 +37,7 @@ export function ConversationHistory({
       )}
     >
       <h3 className="text-sm font-semibold">Conversation History</h3>
-      <form className="flex gap-2" onSubmit={(e) => e.preventDefault()}>
+      <form onSubmit={(e) => e.preventDefault()}>
         <Textarea
           required
           maxLength={20}
@@ -52,9 +48,6 @@ export function ConversationHistory({
           onChange={(e) => setCreateConversationTitle(e.target.value)}
           onKeyDown={handleConversationEnter}
         />
-        <Button type="button" onClick={createConversation}>
-          +
-        </Button>
       </form>
       <ul className="flex flex-col gap-1 overflow-y-auto">
         {conversationSideBarList.map((item) => (
@@ -87,13 +80,14 @@ export function ConversationHistory({
   );
 }
 
-export function ChatDisplay({ chatLog }: { chatLog: Message[] }) {
+// pending: the answer is being generated but no text has arrived yet
+export function ChatDisplay({ chatLog, pending }: { chatLog: Message[]; pending?: boolean }) {
   const scrollableListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = scrollableListRef.current;
     if (el && chatLog.length > 0) el.scrollTop = el.scrollHeight;
-  }, [chatLog]);
+  }, [chatLog, pending]);
 
   return (
     <div ref={scrollableListRef} className="flex-1 overflow-y-auto p-4">
@@ -119,13 +113,27 @@ export function ChatDisplay({ chatLog }: { chatLog: Message[] }) {
             </li>
           );
         })}
+        {pending && (
+          <li className="self-start rounded-2xl bg-muted px-4 py-3">
+            <span role="status" className="flex items-center gap-1">
+              <span className="sr-only">Generating response</span>
+              {[0, 150, 300].map((delay) => (
+                <span
+                  key={delay}
+                  aria-hidden
+                  className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60"
+                  style={{ animationDelay: `${delay}ms` }}
+                />
+              ))}
+            </span>
+          </li>
+        )}
       </ul>
     </div>
   );
 }
 
 type ChatInputProps = {
-  isLoading?: boolean;
   userQuery: string;
   setUserQuery: Dispatch<SetStateAction<string>>;
   handleSubmit: (e: FormEvent) => void;
@@ -133,17 +141,13 @@ type ChatInputProps = {
 };
 
 export function ChatInput({
-  isLoading,
   userQuery,
   setUserQuery,
   handleSubmit,
   handleEnter,
 }: ChatInputProps) {
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mx-auto flex w-full max-w-3xl items-end gap-2 p-4"
-    >
+    <form onSubmit={handleSubmit} className="mx-auto w-full max-w-3xl p-4">
       <Textarea
         rows={1}
         className="min-h-10 resize-none"
@@ -151,11 +155,7 @@ export function ChatInput({
         onChange={(e) => setUserQuery(e.target.value)}
         onKeyDown={handleEnter}
         placeholder="Enter your message"
-        disabled={isLoading}
       />
-      <Button type="submit" size="icon" aria-label="Send" disabled={isLoading}>
-        <GrSend />
-      </Button>
     </form>
   );
 }
