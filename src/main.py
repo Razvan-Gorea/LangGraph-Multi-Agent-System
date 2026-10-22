@@ -2,13 +2,14 @@ import os
 import subprocess
 import uvicorn
 
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, AsyncExitStack
 from colorama import just_fix_windows_console
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware 
 
 from config import env, sqlclient, connector_manager, integration_agent
 from application.api.models.integration_prompt import IntegrationPrompt
+from application.mcp_server import create_mcp_server, BearerAuth
 
 from application.api.routes.user_routes import userRouter
 from application.api.routes.chat_routes import chatRouter
@@ -18,14 +19,26 @@ from application.api.routes.connector_routes import connectorRouter
 # startup event
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    connector_manager.set_integration_agent(integration_agent)
-    connector_manager.startup_all_connectors()
-    yield
-    # shutdown events
-    # shutdown all the connectors (if needed)
-    connector_manager.shutdown_all_connectors()
+    async with AsyncExitStack() as stack:
+        if mcp:
+            await stack.enter_async_context(mcp.session_manager.run())
+        connector_manager.set_integration_agent(integration_agent)
+        connector_manager.startup_all_connectors()
+        yield
+        # shutdown events
+        # shutdown all the connectors (if needed)
+        connector_manager.shutdown_all_connectors()
+
+# the MCP server runs inside this app so it shares the live connectors (their DB connections come from startup)
+mcp = create_mcp_server(connector_manager) if env.MCP_SERVER_URL else None
 
 app = FastAPI(lifespan=lifespan)
+
+if mcp:
+    # it exposes raw SQL and port 8888 is published, so never mount it without a token
+    if not env.MCP_AUTH_TOKEN:
+        raise RuntimeError("MCP_SERVER_URL is set but MCP_AUTH_TOKEN is empty")
+    app.mount("/mcp", BearerAuth(mcp.streamable_http_app(), env.MCP_AUTH_TOKEN))
 
 @app.post("/receive_webhook/{connector_name}")
 async def receive_webhook(connector_name:str, request: Request):
@@ -41,7 +54,7 @@ async def receive_webhook(connector_name:str, request: Request):
         connector_schema = str(connector.schema),
         body = str(reqbody)
     )
-    integration_agent.graph.invoke({
+    await integration_agent.graph.ainvoke({
         "messages": [
             {"role": "user", "content": prompt.to_string()},
         ],
@@ -51,7 +64,7 @@ async def receive_webhook(connector_name:str, request: Request):
 
 origins = [
     "http://localhost:3000",
-    "http://127.0.0.1:3000"
+    "http://127.0.0.1:3000",
     "http://localhost:8000"
 ]
 
