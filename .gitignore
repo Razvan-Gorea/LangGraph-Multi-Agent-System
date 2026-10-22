@@ -13,3 +13,5 @@ CLAUDE.md
 graphify-out
 src/graphify-out/*
 src/graphify-out/
+
+test.db
