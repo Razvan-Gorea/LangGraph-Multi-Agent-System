@@ -1,21 +1,19 @@
-version: '3'
-
 services:
   zookeeper:
-    image: quay.io/debezium/zookeeper:3.0
+    image: quay.io/debezium/zookeeper:3.3
     container_name: zookeeper
     ports:
-      - "0.0.0.0:2181:2181"
-      - "0.0.0.0:2888:2888"
-      - "0.0.0.0:3888:3888"
+      - "2181:2181"
+      - "2888:2888"
+      - "3888:3888"
     networks:
       - app-network
 
   kafka:
-    image: quay.io/debezium/kafka:3.0
+    image: quay.io/debezium/kafka:3.3
     container_name: kafka
     ports:
-      - "0.0.0.0:9092:9092"
+      - "9092:9092"
     depends_on:
       - zookeeper
     environment:
@@ -24,15 +22,21 @@ services:
       - app-network
 
   postgres:
-    image: postgres:latest
+    image: postgres:17-alpine
     container_name: postgres_container
+    # logical WAL is required for Debezium CDC
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_wal_senders=10", "-c", "max_replication_slots=10"]
     ports:
-      - "0.0.0.0:5432:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # runs on first init of the data volume only
+      - ./external/postgres_example/dummy_data.sql:/docker-entrypoint-initdb.d/dummy_data.sql
     environment:
-      - PGHOST=0.0.0.0
-      - PGPORT=5432
+      # demo credentials, matching seeds/connectors/connector_details.json
+      - POSTGRES_USER=myuser
+      - POSTGRES_PASSWORD=mypassword
+      - POSTGRES_DB=mydatabase
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U myuser -d mydatabase"]
       interval: 10s
@@ -42,10 +46,11 @@ services:
       - app-network
 
   kafka-connect:
-    image: quay.io/debezium/connect:3.0
+    image: quay.io/debezium/connect:3.3
+    # the connector code addresses this host as http://connect:8083
     container_name: connect
     ports:
-      - "0.0.0.0:8083:8083"
+      - "8083:8083"
     depends_on:
       - kafka
       - postgres
@@ -55,15 +60,6 @@ services:
       - OFFSET_STORAGE_TOPIC=my_connect_offsets
       - STATUS_STORAGE_TOPIC=my_connect_statuses
       - BOOTSTRAP_SERVERS=kafka:9092
-      - CONNECT_BOOTSTRAP_SERVERS=kafka:9092
-      - CONNECT_REST_PORT=8083
-      - CONNECT_GROUP_ID=1
-      - CONNECT_CONFIG_STORAGE_TOPIC=my_connect_configs
-      - CONNECT_OFFSET_STORAGE_TOPIC=my_connect_offsets
-      - CONNECT_STATUS_STORAGE_TOPIC=my_connect_statuses
-      - CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
-      - CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
-      - CONNECT_REST_ADVERTISED_HOST_NAME=connect
     networks:
       - app-network
     healthcheck:
@@ -74,19 +70,20 @@ services:
       start_period: 30s
 
   fast-api:
-    image: fast-api-example:latest
+    build: ./external/rest_example
     container_name: fast-api-example
     ports:
-      - "0.0.0.0:8000:8000"
+      - "8000:8000"
     networks:
       - app-network
 
   docgenie-app:
-    image: docgenie-app:latest
+    build: .
     container_name: docgenie-app
+    env_file: .env
     ports:
-      - "0.0.0.0:8888:8888"
-      - "0.0.0.0:3000:3000"
+      - "8888:8888"
+      - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy

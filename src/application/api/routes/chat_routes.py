@@ -1,7 +1,7 @@
 from fastapi import Depends, APIRouter
 from typing import Annotated
 from fastapi import HTTPException
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from application.api.dependencies import get_sql_client, get_dbutils, get_environment, get_supervisor_agent
@@ -41,13 +41,13 @@ def get_conversation(convo_id: int, sqlclient: SQLDep) -> Conversation:
 
 @chatRouter.post("/conversation/create")
 def create_conversation(conversation: Conversation, sqlclient: SQLDep) -> Conversation:
-    conversation.last_modified_date = datetime.utcnow()
+    conversation.last_modified_date = datetime.now(timezone.utc)
     conversation = sqlclient.add_object(conversation)
     return conversation
 
 @chatRouter.put("/conversation/{convo_id}")
 def update_conversation(convo_id: int, conversation: Conversation, sqlclient: SQLDep) -> Conversation:
-    conversation.last_modified_date = datetime.utcnow()
+    conversation.last_modified_date = datetime.now(timezone.utc)
     convo_replace = sqlclient.get_by_id(Conversation, convo_id)
     if not convo_replace:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -81,12 +81,12 @@ def get_chat(chat_id: int, sqlclient: SQLDep) -> Chat:
 @chatRouter.post("/conversation/{convo_id}/chat/create")
 def create_chat(convo_id: int, chat: Chat, sqlclient: SQLDep) -> Chat:
     
-    chat.last_modified_date = datetime.utcnow()
+    chat.last_modified_date = datetime.now(timezone.utc)
     chat = sqlclient.add_object(chat)
     
     # we update the conversation to bump it to the top of the recent lists
     conversation = sqlclient.get_by_id(Conversation, convo_id)
-    conversation.last_modified_date = datetime.utcnow()
+    conversation.last_modified_date = datetime.now(timezone.utc)
     
     sqlclient.add_object(conversation)
     
@@ -95,7 +95,7 @@ def create_chat(convo_id: int, chat: Chat, sqlclient: SQLDep) -> Chat:
 @chatRouter.post("/conversation/{convo_id}/chat/response")
 def create_response(convo_id: int, chat: Chat, sqlclient: SQLDep, supervisor_agent: SupervisorAgentDep) -> Chat:
     conversation = sqlclient.get_by_id(Conversation, convo_id)
-    conversation.last_modified_date = datetime.utcnow()
+    conversation.last_modified_date = datetime.now(timezone.utc)
     
     user = sqlclient.get_by_id(User, conversation.user_id, eager_relationships=[User.permissions])
     
@@ -118,7 +118,7 @@ def delete_chat(chat_id: int, sqlclient: SQLDep):
 
 @chatRouter.put("/conversation/{convo_id}/chat/{chat_id}")
 def update_chat(chat_id: int, chat: Chat, sqlclient: SQLDep) -> Chat:
-    chat.last_modified_date = datetime.utcnow()
+    chat.last_modified_date = datetime.now(timezone.utc)
     chat_replace = sqlclient.get_by_id(Chat, chat_id)
     if not chat_replace:
         raise HTTPException(status_code=404, detail="Chat not found")

@@ -2,8 +2,7 @@
 
 A multi-agent Retrieval Augmented Generation (RAG) system that centralises fragmented external datastores into a single queryable vector database. Users interact with their data through a conversational chatbot interface, with access control enforced at the namespace level.
 
-**DCU CSC1097 — Year 4 Project**
-Authors: Razvan Gorea & Shane Power | Supervisor: Tomas Ward
+Authors: Razvan Gorea & Shane Power 
 
 ---
 
@@ -91,10 +90,10 @@ Real-time data freshness is handled for PostgreSQL sources via Debezium Change D
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 18 (React, TypeScript) |
-| Backend | Python 3.10, FastAPI, Uvicorn |
+| Frontend | Next.js 16 (React 19, TypeScript, Tailwind v4, shadcn/ui) |
+| Backend | Python 3.12, FastAPI, Uvicorn |
 | Multi-agent | LangGraph, LangChain |
-| LLM | Mistral (`mistral-large-latest`) via `langchain-mistralai` |
+| LLM | Configurable via `LLM_PROVIDER` / `LLM_MODEL` (LangChain `init_chat_model`; default Mistral `mistral-large-latest`) |
 | Vector store | Pinecone (`multilingual-e5-large` embeddings) |
 | Local DB | SQLite via SQLModel / SQLAlchemy |
 | CDC / streaming | Debezium, Apache Kafka, Zookeeper |
@@ -102,7 +101,7 @@ Real-time data freshness is handled for PostgreSQL sources via Debezium Change D
 | Containerisation | Docker, Docker Compose |
 | Static analysis | basedpyright |
 | Testing | pytest, pytest-cov, Jest |
-| CI | GitLab CI |
+| CI | GitHub Actions |
 
 ---
 
@@ -110,6 +109,7 @@ Real-time data freshness is handled for PostgreSQL sources via Debezium Change D
 
 ```
 .
+├── .github/workflows/ci.yml     # GitHub Actions pipeline
 ├── docs/                        # Project documentation
 │   ├── proposal/                # Original project proposal
 │   ├── functional-spec/         # Functional specification (PDF)
@@ -120,11 +120,13 @@ Real-time data freshness is handled for PostgreSQL sources via Debezium Change D
 └── src/
     ├── docker-compose.yml       # Full stack orchestration
     ├── Dockerfile               # Multi-stage build (Next.js + Python)
-    ├── requirements.txt
+    ├── .env_example             # Template for src/.env
+    ├── requirements.txt          # runtime deps
+    ├── requirements-dev.txt      # + test/type-check tools
     ├── main.py                  # FastAPI app entrypoint
     ├── config.py                # Dependency wiring (env, db, agents)
     ├── external/
-    │   ├── postgres_example/    # Sample PostgreSQL service + seed data
+    │   ├── postgres_example/    # Sample PostgreSQL seed data (dummy_data.sql)
     │   └── rest_example/        # Sample REST API (FastAPI)
     ├── tests/
     │   ├── unit/                # Unit tests (pytest)
@@ -132,6 +134,7 @@ Real-time data freshness is handled for PostgreSQL sources via Debezium Change D
     └── application/
         ├── environment.py       # Env var loader
         ├── dbutils.py           # Pinecone client wrapper
+        ├── llm.py               # LLM factory (provider/model from env)
         ├── agents/
         │   ├── supervisor_agent/  # RAG query agent
         │   ├── integration_agent/ # Data ingestion agent
@@ -160,22 +163,24 @@ Real-time data freshness is handled for PostgreSQL sources via Debezium Change D
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
 - A [Pinecone](https://www.pinecone.io/) account and API key
-- A [Mistral AI](https://mistral.ai/) API key
+- An API key for your LLM provider ([Mistral AI](https://mistral.ai/) by default)
 
 ### Environment Variables
 
-Create a `.env` file inside `src/`:
+Create a `.env` file inside `src/` (copy `src/.env_example` as a template; Docker Compose loads it via `env_file`):
 
 ```env
 PINECONE_API_KEY=your_pinecone_api_key
-DEEPSEEK_API_KEY=your_mistral_api_key
+LLM_API_KEY=your_llm_api_key
+LLM_PROVIDER=mistralai
+LLM_MODEL=mistral-large-latest
 SQL_LITE_DB_STRING=sqlite:///./test.db
 LOCAL_HOST_BACKEND_IP=0.0.0.0
 LOCAL_HOST_FRONTEND_IP=0.0.0.0
 DEBUG_MODE=False
 ```
 
-> `DEEPSEEK_API_KEY` is used as the Mistral API key — the variable name is a historical artefact.
+> `LLM_PROVIDER` / `LLM_MODEL` select the chat model via LangChain's `init_chat_model` (default Mistral). For another provider, `pip install langchain-<provider>` and set all three variables; the model must support tool calling and structured output.
 
 ### Running with Docker Compose
 
@@ -183,18 +188,13 @@ The compose file starts Zookeeper, Kafka, Kafka Connect (Debezium), PostgreSQL, 
 
 ```bash
 cd src
+cp .env_example .env   # then fill in the values above
 
-# Build the DocGenie image
-docker build -t docgenie-app:latest .
-
-# Build the sample REST API image (optional, for demo connectors)
-cd external/rest_example
-docker build -t fast-api-example .
-cd ../..
-
-# Start everything
-docker compose up
+# Build and start everything
+docker compose up --build
 ```
+
+PostgreSQL starts with logical WAL enabled (needed by Debezium) and loads `external/postgres_example/dummy_data.sql` the first time its volume is created. To reset the database, run `docker compose down -v`.
 
 | Service | URL |
 |---|---|
@@ -203,6 +203,16 @@ docker compose up
 | Kafka Connect | http://localhost:8083 |
 | Sample REST API | http://localhost:8000 |
 | PostgreSQL | localhost:5432 |
+
+#### Sample REST API on its own
+
+The demo REST service in `src/external/rest_example` is Dockerised and can run without Compose:
+
+```bash
+cd src/external/rest_example
+docker build -t fast-api-example .
+docker run -d -p 8000:8000 --name fast-api-example fast-api-example
+```
 
 ### Running Locally (Development)
 
@@ -213,16 +223,18 @@ cd src
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # runtime deps are in requirements.txt
 
 # Install frontend dependencies
 cd application/front_end/docgenie
-npm ci --legacy-peer-deps
+npm ci
 cd ../../..
 
 # Start the backend (also spawns the Next.js dev server)
 python main.py
 ```
+
+To run only the Next.js frontend, use `npm run dev` from `src/application/front_end/docgenie`.
 
 > The infrastructure services (Postgres, Kafka, Debezium) still need to run via Docker Compose for the PostgreSQL connector to function. You can start just the infrastructure: `docker compose up zookeeper kafka kafka-connect postgres`.
 
@@ -287,7 +299,7 @@ Connects to a PostgreSQL database and registers a Debezium CDC connector with Ka
 
 ## Agents
 
-Both agents are built with [LangGraph](https://langchain-ai.github.io/langgraph/) and use `mistral-large-latest` as the underlying LLM.
+Both agents are built with [LangGraph](https://langchain-ai.github.io/langgraph/) and use the LLM configured by `LLM_PROVIDER` / `LLM_MODEL` (default `mistral-large-latest`).
 
 ### Supervisor Agent
 
@@ -333,14 +345,18 @@ The full OpenAPI docs are available at `http://localhost:8888/docs` when the ser
 | `GET/PUT/DELETE` | `/permission/{permission_id}` | Manage a permission |
 | `POST` | `/conversation/create` | Start a new conversation |
 | `POST` | `/conversation/all` | List all conversations for a user |
-| `GET` | `/conversation/{convo_id}` | Get a conversation |
+| `POST` | `/conversation/latest` | Get a user's most recently used conversation |
+| `GET/PUT/DELETE` | `/conversation/{convo_id}` | Manage a conversation |
 | `POST` | `/conversation/{convo_id}/chat/create` | Add a user message |
 | `POST` | `/conversation/{convo_id}/chat/response` | Get an AI response |
 | `GET` | `/conversation/{convo_id}/chat/all` | Get all messages in a conversation |
+| `GET/PUT/DELETE` | `/conversation/{convo_id}/chat/{chat_id}` | Manage a single message |
 | `GET` | `/connector/all` | List all connectors |
+| `GET` | `/connector/{name}` | Get a connector's config |
 | `POST` | `/connector/new` | Register and start a new connector |
 | `GET` | `/connector/{name}/status` | Check if a connector is active |
 | `GET` | `/seed/all` | Seed the database with default data |
+| `GET` | `/seed/{user,permission,conversation,connector}` | Seed one table only |
 
 ---
 
@@ -354,6 +370,10 @@ curl http://localhost:8888/seed/all
 
 This loads the default permissions, users, conversations, and the three example connectors (`SimplyTransport`, `DayofTheWeek`, `postgres_database`).
 
+- Run the backend from `src/`: the seed files are read via paths relative to the working directory.
+- Seeding is not idempotent; calling a seed endpoint twice inserts duplicate rows.
+- Connectors are loaded into memory once at startup, so restart the backend after seeding connectors.
+
 ---
 
 ## Testing
@@ -365,32 +385,33 @@ cd src
 coverage run -m pytest tests/unit
 coverage report -m
 
-# E2E tests (requires live Pinecone + Mistral credentials)
+# E2E tests (requires live Pinecone + LLM credentials)
 python -m pytest tests/e2e
 
 # Static type checking
-basedpyright --pythonversion 3.10
+basedpyright --pythonversion 3.12
 
 # Frontend tests
 cd application/front_end/docgenie
 npx jest ./tests --ci --coverage
 ```
 
+basedpyright runs with a baseline (`.basedpyright/baseline.json`), so it reports only errors that are not already in the baseline. Use `--writebaseline` to record new errors into it.
+
 ---
 
 ## CI/CD
 
-The GitLab CI pipeline (`.gitlab-ci.yml`) runs on every push across three stages:
+The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push, pull request and manual dispatch. Jobs run in parallel:
 
-| Stage | Job | What it does |
-|---|---|---|
-| build | `build-frontend` | `npm ci` + `npm run build` for the Next.js app |
-| test | `python-unit-tests` | pytest + coverage report |
-| test | `python-e2e-tests` | End-to-end pytest suite |
-| test | `javascript-unit-tests` | Jest with coverage |
-| test | `formatting-tests` | basedpyright static analysis + GitLab Code Quality report |
-
-E2E tests are permitted to fail on PRs (they can be flaky against live external services). One approval is required to merge into `main`.
+| Job | What it does |
+|---|---|
+| `python-unit-tests` | pytest with coverage; uploads the JUnit report |
+| `python-e2e-tests` | End-to-end pytest suite; skipped (not failed) when the `PINECONE_API_KEY` / `LLM_API_KEY` secrets are absent |
+| `type-check` | basedpyright; new type errors fail the build |
+| `frontend-tests` | Jest with coverage |
+| `frontend-build` | `npm ci` + `npm run build` for the Next.js app |
+| `docker-build` | Builds the app and sample REST API images (no push) |
 
 ---
 
@@ -404,5 +425,5 @@ Full documentation is available under `docs/`:
 | Functional Specification | `docs/functional-spec/Functional Specification.pdf` |
 | Technical Manual | `docs/documentation/Technical Manual.pdf` |
 | User Manual | `docs/documentation/User Manual.pdf` |
-| Video Walkthrough | `docs/video-walk-through/docgenie_walkthrough.mkv` |
+| Video Walkthrough | [Google Drive](https://drive.google.com/file/d/1VTGp4g6vwV6v96V97trAFWahl0lQuFmV/view?usp=sharing), or locally at `docs/video-walk-through/docgenie_walkthrough.mkv` |
 | Architecture Diagrams | `res/diagrams/` |

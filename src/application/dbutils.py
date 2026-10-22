@@ -92,7 +92,7 @@ class DbUtils(object):
             include_values=False,
             include_metadata=True
         )
-        return results.matches
+        return results.matches  # pyright: ignore[reportAttributeAccessIssue] # async_req is never set
     
     def index_exists(self, index_name:str) -> bool:
         try:

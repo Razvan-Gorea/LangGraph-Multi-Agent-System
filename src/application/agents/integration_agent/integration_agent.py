@@ -1,5 +1,6 @@
 from application.dbutils import DbUtils
 from application.environment import Environment
+from application.llm import get_llm
 from application.connectors.connector_builder import ConnectorBuilder
 
 from application.agents.extras import IntegrationState, GraphCallback
@@ -12,7 +13,6 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.graph import START, END, StateGraph
 from langgraph.types import Command
 from langchain_core.messages import HumanMessage
-from langchain_mistralai import ChatMistralAI
 from typing import Any
 
 class IntegrationAgent:
@@ -26,14 +26,7 @@ class IntegrationAgent:
         self.dbutils = dbutils
         self.callbacks = [GraphCallback()]
 
-        self.llm = ChatMistralAI(
-            model="mistral-large-latest",
-            temperature=0,
-            max_retries=2,
-            max_tokens=1500,
-            api_key=env.DEEPSEEK_API_KEY,
-            callbacks=self.callbacks
-        )
+        self.llm = get_llm(env, 1500)
  
         self.query_prompt = f'''Your job is to extract data from a data source. 
             The type of the connector is important. The type is told to you in the user message.

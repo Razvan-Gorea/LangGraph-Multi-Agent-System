@@ -1,7 +1,7 @@
 import pytest
 from typing import Any
 from fastapi.testclient import TestClient
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 from langchain_core.messages import HumanMessage
 from langchain_mistralai import ChatMistralAI
@@ -70,7 +70,9 @@ def client_fixture(sqlclient: SQLClient, dbutils: DbUtils):
 @pytest.fixture
 def mock_env():
     mock = MagicMock()
-    mock.DEEPSEEK_API_KEY = "test_api_key"
+    mock.LLM_API_KEY = "test_api_key"
+    mock.LLM_PROVIDER = "mistralai"
+    mock.LLM_MODEL = "mistral-large-latest"
     return mock
 
 @pytest.fixture
@@ -167,7 +169,7 @@ def get_test_conversation() -> Conversation:
         id=1,
         user_id=1,
         title="Test Conversation",
-        last_modified_date=datetime.utcnow(),
+        last_modified_date=datetime.now(timezone.utc),
     )
 
 def get_test_chat() -> Chat:
@@ -175,7 +177,7 @@ def get_test_chat() -> Chat:
         id=1,
         conversation_id=1,
         body="test",
-        last_modified_date=datetime.utcnow(),
+        last_modified_date=datetime.now(timezone.utc),
     )
 
 # helpers
@@ -184,7 +186,7 @@ def create_test_conversation(user_id: int = 1, id: int = 1, title:str = "Test Co
         id=id,
         user_id=user_id,
         title=title,
-        last_modified_date=datetime.utcnow(),
+        last_modified_date=datetime.now(timezone.utc),
     )
 
 
@@ -193,5 +195,5 @@ def create_test_chat(conversation_id: int = 1, id: int = 1, body: str = "Test Ch
         id=id,
         conversation_id=conversation_id,
         body=body,
-        last_modified_date=datetime.utcnow(),
+        last_modified_date=datetime.now(timezone.utc),
     )

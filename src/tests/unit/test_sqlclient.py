@@ -15,7 +15,7 @@ def mock_environment(monkeypatch):
     monkeypatch.setenv('PINECONE_API_KEY', 'mock_pinecone_key')
     monkeypatch.setenv('DEBUG_MODE', 'True')
     monkeypatch.setenv('SQL_LITE_DB_STRING', 'sqlite:///test.db')
-    monkeypatch.setenv('DEEPSEEK_API_KEY', 'mock_anthropic_key')
+    monkeypatch.setenv('LLM_API_KEY', 'mock_llm_key')
     monkeypatch.setenv('LOCAL_HOST_BACKEND_IP', '127.0.0.1')
     monkeypatch.setenv('LOCAL_HOST_FRONTEND_IP', 'http://localhost:3000')
    

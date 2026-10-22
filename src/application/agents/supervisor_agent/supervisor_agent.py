@@ -1,7 +1,8 @@
-from application.agents.extras import State, Router, GraphCallback
+from application.agents.extras import State, Router
 from application.agents.tools.query_dbutils import create_pinecone_tool
 from application.dbutils import DbUtils
 from application.environment import Environment
+from application.llm import get_llm
 from application.api.models.permission import Permission
 
 from langchain_core.messages import HumanMessage
@@ -9,7 +10,6 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.graph import START, END, StateGraph
 from langgraph.types import Command
 from typing import Literal, Optional
-from langchain_mistralai import ChatMistralAI
 
 class SupervisorAgent:
         
@@ -19,14 +19,7 @@ class SupervisorAgent:
         self.pinecone_tool = create_pinecone_tool(dbutils)
         self.members = ["gen", "context"]
         self.options = self.members + ["FINISH"]
-        self.genclient = ChatMistralAI(
-            model="mistral-large-latest",
-            temperature=0,
-            max_retries=2,
-            max_tokens = 500,
-            api_key = env.DEEPSEEK_API_KEY,
-            callbacks=[GraphCallback()]
-        )
+        self.genclient = get_llm(env, 500)
 
         self.system_prompt = (
             f"You are a supervisor that manages a conversation between the following workers: {self.members}. " 
@@ -101,7 +94,7 @@ class SupervisorAgent:
 
     def supervisor(self, state: State) -> Command[Literal["context", "gen", "__end__"]]:
         # some boilerplate
-        # we format this in a way that ChatMistralAI can understand, look at its langchain page to see
+        # we format this in a way that the langchain chat model can understand
         messages = [
         {
             "role": "system",

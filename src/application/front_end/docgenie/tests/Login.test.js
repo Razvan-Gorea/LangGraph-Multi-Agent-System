@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, render, fireEvent } from '@testing-library/react';
-import Login from '../src/app/page.js';
+import Login from '../src/app/page';
 import { useRouter } from 'next/navigation';
 
 jest.mock('next/font/google', () => ({
@@ -18,16 +18,6 @@ jest.mock('next/navigation', () => ({
 }));
 
 // Mock CSS Module
-jest.mock('../styles/Login.module.css', () => ({
-  container: 'mock-container',
-  loginForm: 'mock-login-form',
-  loginTitle: 'mock-login-title',
-  formGroup: 'mock-form-group',
-  error: 'mock-error',
-  success: 'mock-success',
-  submitBtn: 'mock-submit-btn',
-}));
-
 // Test Environment
 describe('Login Component Functions', () => {
   const mockPush = jest.fn();

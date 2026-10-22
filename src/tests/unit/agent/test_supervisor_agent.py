@@ -24,7 +24,7 @@ def test_initialization(mock_env: MagicMock, mock_dbutils: MagicMock, mock_pinec
     assert supervisor_agent.graph is not None
 
 def test_context_node(mock_chat_mistralai: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
-    mock_output = {"role": "assistant", "content": "Context Facts", "name": "context_agent"}
+    mock_output = AIMessage(content="Context Facts")
     mock_chat_mistralai.return_value = mock_output
     result = supervisor_agent.context(initial_state)
     
@@ -35,7 +35,7 @@ def test_context_node(mock_chat_mistralai: MagicMock, supervisor_agent: Supervis
     assert result.update["messages"][0].name == "context"
 
 def test_context_node_empty_response(mock_chat_mistralai: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
-    mock_output = {"role": "assistant", "content": ""}
+    mock_output = AIMessage(content="")
     mock_chat_mistralai.return_value = mock_output
     result = supervisor_agent.context(initial_state)
 
@@ -46,7 +46,7 @@ def test_context_node_empty_response(mock_chat_mistralai: MagicMock, supervisor_
     assert result.update["messages"][0].name == "context"
 
 def test_gen_node(mock_chat_mistralai: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
-    mock_output = {"role": "assistant", "content": "Gen Facts", "name": "gen_agent"}
+    mock_output = AIMessage(content="Gen Facts")
     mock_chat_mistralai.return_value = mock_output
     result = supervisor_agent.gen(initial_state)
 
@@ -57,7 +57,7 @@ def test_gen_node(mock_chat_mistralai: MagicMock, supervisor_agent: SupervisorAg
     assert result.update["messages"][0].name == "gen"
 
 def test_gen_node_empty_response(mock_chat_mistralai: MagicMock, supervisor_agent: SupervisorAgent, initial_state: dict):
-    mock_output = {"role": "assistant", "content": ""}
+    mock_output = AIMessage(content="")
     mock_chat_mistralai.return_value = mock_output
     result = supervisor_agent.gen(initial_state)
 

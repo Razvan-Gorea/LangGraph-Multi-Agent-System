@@ -1,7 +1,7 @@
 // AdminPage.test.jsx
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import AdminPage from '../src/app/admin/[id]/page.js';
+import AdminPage from '../src/app/admin/[id]/page';
 import { useParams, useRouter } from 'next/navigation';
 
 // Mock the Next.js modules
@@ -22,17 +22,6 @@ jest.mock('next/navigation', () => ({
 // Mock the CSS modules
 jest.mock('../styles/Chat_Bot.module.css', () => ({
   block: 'mock-block',
-}));
-
-jest.mock('../styles/Admin.module.css', () => ({
-  container: 'mock-container',
-  searchContainer: 'mock-search-container',
-  searchField: 'mock-search-field',
-  searchButton: 'mock-search-button',
-  table: 'mock-table',
-  tableHeader: 'mock-table-header',
-  tableHeaderCell: 'mock-table-header-cell',
-  tableCell: 'mock-table-cell',
 }));
 
 describe('AdminPage Component', () => {

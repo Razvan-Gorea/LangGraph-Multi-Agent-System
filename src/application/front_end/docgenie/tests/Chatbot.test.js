@@ -1,7 +1,8 @@
 // Chat_Bot.test.jsx
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import Chat_Bot, { ConversationHistory, ChatDisplay, ChatInput } from '../src/app/chat_bot/[id]/page';
+import Chat_Bot from '../src/app/chat_bot/[id]/page';
+import { ConversationHistory, ChatDisplay, ChatInput } from '../src/components/chat';
 import { useParams, useRouter } from 'next/navigation';
 
 // Mock the Next.js modules
@@ -17,28 +18,6 @@ jest.mock('next/font/google', () => ({
 jest.mock('next/navigation', () => ({
   useParams: jest.fn(),
   useRouter: jest.fn(),
-}));
-
-jest.mock('../styles/Chat_Bot.module.css', () => ({
-  block: 'mock-block',
-  icon: 'mock-icon',
-  message: 'mock-message',
-  conversation_history: 'mock-conversation-history',
-  title: 'mock-title',
-  conversation_text_bar: 'mock-conversation-text-bar',
-  conversation_button: 'mock-conversation-button',
-  scrollable_conversations_list: 'mock-scrollable-conversations-list',
-  conversation_item: 'mock-conversation-item',
-  delete_icon: 'mock-delete-icon',
-  scrollable_list: 'mock-scrollable-list',
-  text_bar: 'mock-text-bar',
-  query_submit_button: 'mock-query-submit-button',
-  // Add these new style mocks
-  user_message: 'mock-user-message',
-  generated_message: 'mock-generated-message',
-  section_zone: 'mock-section-zone',
-  settings_icon: 'mock-settings-icon',
-  settings_message: 'mock-settings-message',
 }));
 
 jest.mock('react-icons/ri', () => ({
@@ -422,8 +401,8 @@ describe('ChatDisplay Component', () => {
     const botResponse = screen.getByText('Bot response');
     
     // Check they have the right classes
-    expect(userMessage.closest('li')).toHaveClass('mock-user-message');
-    expect(botResponse.closest('li')).toHaveClass('mock-generated-message');
+    expect(userMessage.closest('li')).toHaveAttribute('data-role', 'user');
+    expect(botResponse.closest('li')).toHaveAttribute('data-role', 'bot');
   });
   
   test('handles empty chat log', () => {
