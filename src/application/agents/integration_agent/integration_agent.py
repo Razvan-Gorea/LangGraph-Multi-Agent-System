@@ -14,7 +14,8 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.graph import START, END, StateGraph
 from langgraph.types import Command
 from langchain_core.messages import HumanMessage
-from typing import Any
+from langchain_core.runnables import RunnableConfig
+from typing import Any, cast
 
 class IntegrationAgent:
     # the graph is invoked telling us what stores to pull data from
@@ -100,7 +101,8 @@ class IntegrationAgent:
         return builder.compile()
  
     def query_node(self, state: IntegrationState) -> Command[Any]:
-        result = self.query_agent.invoke(input=state, config={"callbacks": self.callbacks})
+        assert self.query_agent is not None
+        result = self.query_agent.invoke(input=state, config=cast(RunnableConfig, {"callbacks": self.callbacks}))
         print(result["messages"][-1].pretty_print())
         return Command(
             update={
@@ -112,13 +114,14 @@ class IntegrationAgent:
  
     async def aquery_node(self, state: IntegrationState) -> Command[Any]:
         if self.query_agent is None:
+            assert self.mcp_client is not None
             # server is mounted in this same app, so tools can only be fetched once it is serving
             self.query_agent = create_react_agent(
                 model=self.llm,
                 tools=await self.mcp_client.get_tools(),
                 prompt=self.query_prompt,
             )
-        result = await self.query_agent.ainvoke(input=state, config={"callbacks": self.callbacks})
+        result = await self.query_agent.ainvoke(input=state, config=cast(RunnableConfig, {"callbacks": self.callbacks}))
         return Command(
             update={
                 "messages": [

@@ -4,14 +4,6 @@
             {
                 "code": "reportArgumentType",
                 "range": {
-                    "startColumn": 61,
-                    "endColumn": 90,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
                     "startColumn": 65,
                     "endColumn": 94,
                     "lineCount": 1
@@ -27,14 +19,6 @@
             }
         ],
         "./src/application/agents/supervisor_agent/supervisor_agent.py": [
-            {
-                "code": "reportIndexIssue",
-                "range": {
-                    "startColumn": 15,
-                    "endColumn": 23,
-                    "lineCount": 1
-                }
-            },
             {
                 "code": "reportArgumentType",
                 "range": {

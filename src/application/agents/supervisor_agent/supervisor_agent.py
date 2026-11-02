@@ -5,11 +5,11 @@ from application.environment import Environment
 from application.llm import get_llm
 from application.api.models.permission import Permission
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import BaseMessage, HumanMessage
 from langgraph.prebuilt import create_react_agent
 from langgraph.graph import START, END, StateGraph
 from langgraph.types import Command
-from typing import Iterator, Literal, Optional
+from typing import Any, Generator, Literal, Optional, cast
 
 class SupervisorAgent:
         
@@ -157,14 +157,16 @@ class SupervisorAgent:
                     print(previous_step)
                     return previous_step
 
-    def stream_input(self, user_message: str, user_permissions: list[Permission]) -> Iterator[str]:
+    def stream_input(self, user_message: str, user_permissions: list[Permission]) -> Generator[str, None, None]:
         """Same graph and input as take_input, but yields the gen agent's answer as it is generated."""
         try:
-            for chunk, metadata in self.graph.stream({
+            for item in self.graph.stream({
                 "messages" : [(
                     "user", "Here is the user query: " + user_message + ". Here are the users permissions: " + str([perm.permission_name for perm in user_permissions])
                 )]
             }, stream_mode="messages"):
+                # the stubs type stream items loosely, in messages mode they are (message, metadata)
+                chunk, metadata = cast(tuple[BaseMessage, dict[str, Any]], item)
                 # the context agent's facts and the supervisor's routing replies are not for the user
                 if not metadata.get("langgraph_checkpoint_ns", "").startswith("gen:"):
                     continue
